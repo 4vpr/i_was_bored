@@ -158,7 +158,7 @@ class Character:
         critical_multiplier = 1.0
         if random.random() < self.critical / 100:
             critical_multiplier = 1.5 # 치명타 배율
-            if self.critial > 100:
+            if self.critical > 100:
                 critical_multiplier += self.critical / 100 - 1
             print(f"{self.name}은(는) {target.name}의 급소를 찔렀다.")
             time.sleep(0.5)
@@ -188,30 +188,26 @@ class Character:
 
     # 턴 효과 적용
     def apply_turn_effects(self):
-        skip_turn_active = False
+        is_actionable = True
         for effect in self.status_effects[:]:
-            print(f"{self.name}은(는) {effect.name}의 영향을 받고 있다. (남은 턴: {effect.duration})")
+            print(f"{self.name}은(는) {effect.name}의 영향을 받고 있다. ({effect.duration} 남음.)")
             time.sleep(0.5)
             if effect.skip_turn:
-                skip_turn_active = True
-                print(f"{self.name}은(는) {effect.name}의 속박되어 움직이지 못했다.")
+                is_actionable = False
+                print(f"{self.name}은(는) {effect.name}때문에 움직이지 못했다.")
                 time.sleep(0.5)
-            if effect.duration == 0:
-                self.status_effects.remove(effect)
-                print(f"{self.name}의 {effect.name} 낙인이 희미해진다.")
-                time.sleep(0.5)
-                return True
             if effect.damage_per_turn > 0:
                 print(f"{effect.name}이(가) {self.name}의 생명을 갉아먹는다.")
                 time.sleep(0.5)
                 self.take_damage(effect.damage_per_turn)
-            effect.duration -= 1
+            effect.duration = effect.duration - 1
+            print(effect.duration)
             if effect.duration < 0:
                 self.status_effects.remove(effect)
                 print(f"{self.name}의 {effect.name} 낙인이 사라졌다.")
                 time.sleep(0.5)
                 self._apply_stat_modifiers()
-        return False
+        return is_actionable
 
     def show_stats(self):
         print(f"\n[ {self.name} ]"); time.sleep(0.1)
@@ -940,23 +936,15 @@ class Game:
         print(f"\n{monster.name}이(가) 모습을 드러냈다.\n")
         time.sleep(1)
         while self.player.is_alive() and monster.is_alive():
-            for character in [self.player, monster]:
-                for effect in character.status_effects[:]:
-                    effect.apply_effect(character)
-                    effect.duration -= 1
-                    if effect.duration <= 0:
-                        character.status_effects.remove(effect)
-                        print(f"{character.name}의 {effect.name} 효과가 사라졌다.\n")
-
+            monster.show_stats()
+            self.player.show_stats()
+            if not monster.is_alive(): break            
+            if self.player.apply_turn_effects():
+                self.player_turn(monster)
             if not monster.is_alive(): break
-
-            
-            self.player_turn(monster)
-            if not monster.is_alive(): break
-
-            self.monster_turn(monster)
+            if monster.apply_turn_effects():
+                self.monster_turn(monster)
             if not self.player.is_alive(): break
-
         if self.player.is_alive():
             print(f"\n{monster.name}의 시체를 넘고 전진한다.\n")
             time.sleep(1)
@@ -971,55 +959,45 @@ class Game:
             return False
 
     def player_turn(self, monster):
-        monster.show_stats()
-        self.player.show_stats()
         time.sleep(0.5)
-        if self.player.has_status("기절"):
-            print("너는 기절 상태이다. 행동할 수 없다.")
-            time.sleep(1.5)
+        print("\n1. 휘두르기 Lv.1 (*)")
+        if self.player.has_status("침묵"):
+            print("너는 침묵 상태이다. 힘을 사용할 수 없다.")
+            time.sleep(0.5)
         else:
-            print("\n1. 휘두르기 Lv.1 (*)")
-            if self.player.has_status("침묵"):
-                print("너는 침묵 상태이다. 힘을 사용할 수 없다.")
+            for i, skill in enumerate(self.player.skills):
+                print(f"{i+2}. {skill.name} Lv.{skill.level} ({skill.use_count}/{skill.initial_use_count})")
                 time.sleep(0.5)
-            else:
-                for i, skill in enumerate(self.player.skills):
-                    print(f"{i+2}. {skill.name} Lv.{skill.level} ({skill.use_count}/{skill.initial_use_count})")
-                    time.sleep(0.5)
-            while True:
-                try:
-                    choice = int(input("행동을 선택하자: "))
-                    if 1 <= choice <= len(self.player.skills) + 1:
-                        break
-                    else:
-                        print("어둠 속에서 길을 잃었는가? 다시 선택하라.")
-                except ValueError:
-                    print("알 수 없는 속삭임이다. 명확한 답을 내놓아라.")
+        while True:
+            try:
+                choice = int(input("행동을 선택하자: "))
+                if 1 <= choice <= len(self.player.skills) + 1:
+                    break
+                else:
+                    print("어둠 속에서 길을 잃었는가? 다시 선택하라.")
+            except ValueError:
+                print("알 수 없는 속삭임이다. 명확한 답을 내놓아라.")
 
-            if choice == 1:
-                #self.player.deal_physical_damage(monster, self.player.attack)
-                self.player.deal_damage(monster, self.player.attack)
-            else:
-                skill = self.player.skills[choice-2]
-                skill.execute(self.player, monster)
-                if skill.use_count <= 0:
-                    self.player.skills.remove(skill)
-                    print(f"{skill.name}의 힘을 모두 소진했다.\n")
-        time.sleep(1.5)
+        if choice == 1:
+            #self.player.deal_physical_damage(monster, self.player.attack)
+            self.player.deal_damage(monster, self.player.attack)
+        else:
+            skill = self.player.skills[choice-2]
+            skill.execute(self.player, monster)
+            if skill.use_count <= 0:
+                self.player.skills.remove(skill)
+                print(f"{skill.name}의 힘을 모두 소진했다.\n")
+
 
     def monster_turn(self, monster_obj):
-        if monster_obj.has_status("기절"):
-            print(f"{monster_obj.name}은(는) 기절 상태이다. 행동할 수 없다.")
-            time.sleep(1.5)
+        if monster_obj.skills and random.random() < 0.3 and not monster_obj.has_status("침묵"):
+            skill = random.choice(monster_obj.skills)
+            print(f"{monster_obj.name}이(가) {skill.name}을(를) 사용한다.")
+            skill.execute(monster_obj, self.player)
         else:
-            if monster_obj.skills and random.random() < 0.3 and not self.monster_obj.has_status("침묵"):
-                skill = random.choice(monster_obj.skills)
-                print(f"{monster_obj.name}이(가) {skill.name}을(를) 사용한다.")
-                skill.execute(monster_obj, self.player)
-            else:
-                print(f"{monster_obj.name}의 공격.")
-                monster_obj.deal_damage(self.player, monster_obj.attack)
-        time.sleep(1.5)
+            print(f"{monster_obj.name}의 공격.")
+            monster_obj.deal_damage(self.player, monster_obj.attack)
+    time.sleep(1.5)
 
     def battle_reward(self, is_boss):
         print("\n--- 적을 무로 돌렸다 ---")
