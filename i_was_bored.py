@@ -1,8 +1,5 @@
 
 i_was_bored = r"""
-
-
-
 .__                           ___.                            .___                 
 |__| __  _  _______    ______ \ _|__   ___________   ____   __| _/   ______ ___.__.
 |  | \ \/ \/ /\__  \  /  ___/  | __ \ /  _ \_  __ \_/ __ \ / __ |    \____ <   |  |
@@ -12,25 +9,29 @@ i_was_bored = r"""
 
                    
                 i_was_bored.py - A Text-Based Rouge-like RPG
+                            
                             Enter 를 눌러 계속...
-                                help - 도움말
-                                
+                            
+                            help : 도움말
 
 """
+
 help_text = r"""
 
 1. 개요
     - 이 게임은 파이썬으로 만든 텍스트 기반 로그라이크 RPG입니다.
-    - 플레이어는 몬스터와 싸우고, 장비를 수집하며, 스킬을 사용해 생존을 목표로 합니다.
-    - 게임은 턴제 전투 시스템을 사용하며, 다양한 상태이상과 스킬 효과가 존재합니다.
+    - 플레이어는 몬스터와 싸우고, 장비를 수집하며, "힘"을 사용해 생존을 목표로 합니다.
 2. 힘
     - 기술과 일맥상통합니다. 공격, 방어, 상태이상 부여 등 다양한 효과를 가집니다.
-    - 각 스킬은 레벨과 사용 횟수가 있으며, 사용 횟수가 0이 되면 더 이상 사용할 수 없습니다.
-    - 스킬은 전투 중에 전략적으로 사용해야 합니다.
+    - 각 힘은은 사용 횟수가 있으며, 사용 횟수가 0이 힘을 잃습니다.
+    - 중복된 힘을 얻을 시 더욱 강해지고 사용 횟수가 초기화됩니다.
+    - 최대 레벨에 도달한 힘은 더 이상 얻을 수 없습니다
 3. 적
-    - 몬스터는 각기 다른 능력치와 스킬을 가지고 있습니다.
-    - 보스 몬스터는 더 강력한 능력치와 스킬을 가지고 있으며 처치시 상점으로 이동하고 다음 장으로 넘어갑니다.
+    - 몬스터는 각기 다른 능력치와 힘들을 가지고 있습니다.
+    = 몬스터를 처치시 힘을 얻습니다.
+    - 보스 몬스터는 더 강력한 능력치와 힘을 가지고 있으며 처치시 상점으로 이동하고 다음 장으로 넘어갑니다.
 
+    이 게임은 매우 불친절합니다. 직접 경험해서 습득해보세요.
 
                             Enter 를 눌러 게임 시작...
 """
@@ -113,6 +114,9 @@ class Character:
         self._base_defense = defense
         self._base_evasion = evasion
 
+    def has_status(self, status_name):
+        return any(e.name == status_name for e in self.status_effects)
+
     def is_alive(self):
         return self.current_health > 0
 
@@ -126,8 +130,9 @@ class Character:
         evasion_chance = self.evasion / 100
         # Cap evasion at 70%
         evasion_chance = min(evasion_chance, 70 / 100) 
-        if random.random() < evasion_chance:
+        if random.random() < evasion_chance and self.evasion > 0 and not any(e.ignore_evasion for e in self.status_effects):
             print(f"{self.name}이(가) 공격을 회피했다!")
+            time.sleep(0.5)
             return
 
         ignore_defense_active = any(e.ignore_defense for e in self.status_effects)
@@ -141,6 +146,7 @@ class Character:
 
         self.current_health -= actual_damage
         print(f"{self.name}의 살점이 {actual_damage}만큼 찢겨나갔다. (남은 생명: {self.current_health}/{self.max_health})")
+        time.sleep(0.5)
         if not self.is_alive():
             print(f"{self.name}의 마지막 숨이 멎었다.")
             time.sleep(1)
@@ -148,12 +154,14 @@ class Character:
     def heal(self, amount):
         self.current_health = min(self.max_health, self.current_health + amount)
         print(f"{self.name}이(가) {amount}만큼 생명을 되찾았다. (현재 생명: {self.current_health}/{self.max_health})")
+        time.sleep(0.5)
 
     def deal_damage(self, target, base_damage, is_skill=False):
         critical_multiplier = 1.0
         if random.random() < self.critical / 100:
             critical_multiplier = 2.0 # 치명타 배율
-            print(f"{self.name}의 공격이 {target.name}에게 치명타로 적중했다!")
+            print(f"{self.name}은(는) {target.name}의 급소를 찔렀다.")
+            time.sleep(0.5)
         
         final_damage = base_damage * critical_multiplier
         target.take_damage(final_damage)
@@ -164,6 +172,7 @@ class Character:
         self.status_effects = [e for e in self.status_effects if e.name != effect.name]
         self.status_effects.append(effect)
         print(f"{self.name}에게 {effect.name}의 낙인이 찍혔다. (지속: {effect.duration}턴)")
+        time.sleep(0.5)
         self._apply_stat_modifiers()
 
     # 스탯 강화 적용
@@ -182,41 +191,48 @@ class Character:
         skip_turn_active = False
         for effect in self.status_effects[:]:
             print(f"{self.name}은(는) {effect.name}의 영향을 받고 있다. (남은 턴: {effect.duration})")
+            time.sleep(0.5)
             if effect.skip_turn:
                 skip_turn_active = True
                 print(f"{self.name}은(는) {effect.name}의 속박되어 움직이지 못했다.")
+                time.sleep(0.5)
                 effect.duration -= 1
             if effect.duration == 0:
                 self.status_effects.remove(effect)
                 print(f"{self.name}의 {effect.name} 낙인이 희미해진다.")
+                time.sleep(0.5)
                 return True
 
             if effect.damage_per_turn > 0:
                 print(f"{effect.name}이(가) {self.name}의 생명을 갉아먹는다.")
+                time.sleep(0.5)
                 self.take_damage(effect.damage_per_turn)
             
             effect.duration -= 1
             if effect.duration < 0:
                 self.status_effects.remove(effect)
                 print(f"{self.name}의 {effect.name} 낙인이 사라졌다.")
+                time.sleep(0.5)
                 self._apply_stat_modifiers()
         return False
 
     def show_stats(self):
-        print(f"\n[ {self.name} ]")
-        print(f"생명: {self.current_health}/{self.max_health}")
-        print(f"공격: {self.attack} 방어: {self.defense}")
-        print(f"민첩: {self.evasion * 100} 강타: {self.critical * 100}")
+        print(f"\n[ {self.name} ]"); time.sleep(0.1)
+        print(f"생명: {self.current_health}/{self.max_health}"); time.sleep(0.1)
+        print(f"공격: {self.attack} 방어: {self.defense}"); time.sleep(0.1)
+        print(f"민첩: {self.evasion} 강타: {self.critical}"); time.sleep(0.1)
         time.sleep(1)
     def show_inv(self):
         if isinstance(self, Player):
             print("[ 장비 ]")
             for part, item in self.equipment.items():
                 print(f"{part}: {item.name if item else '없음'}")
+                print.sleep(0.5)
             print("[ 힘 ]")
             if self.skills:
                 for skill in self.skills:
                     print(f"{skill.name} (Lv.{skill.level}, 남은 횟수: {skill.use_count})")
+                    time.sleep(0.5)
             else:
                 print("습득한 힘 없음")
 # --- 플레이어 클래스 ---
@@ -284,13 +300,13 @@ class Game:
         # 기본 데미지 스킬
         def damage(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}의 살점을 도려낸다.")
-            target.take_damage(caster.attack * (1 + skill.level/5) * skill.power)
+            target.take_damage(caster.attack * (1 + skill.level/3) * skill.power)
 
-        # 낮은 성장력 (power를 높혀주세요)
+        # 낮은 레벨 성장력 (power를 높혀주세요)
         def pulverize(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}의 뼈를 으깬다.")
-            target.take_damage(caster.attack * (1 + skill.level/10) * skill.power)
-    
+            target.take_damage(caster.attack * (1 + skill.level/5) * skill.power)
+
         # 높은 스킬 성장력 attack * level * power
         def reaping(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}의 영혼을 부순다.")
@@ -309,10 +325,10 @@ class Game:
                 damage *= 2
             target.take_damage(damage)
 
-        # 아주 높은 계수 caster.attack * 1.8 * power
+        # 고급 스킬 (power를 높혀주세요)
         def advance_damage(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}을(를) 향해 일격을 날린다.")
-            target.take_damage(caster.attack * 2 * skill.power * skill.level)
+            target.take_damage(caster.attack * (1 + skill.level/3) * skill.power)
 
         # 두번 공격
         def flurry(caster, target, skill):
@@ -324,123 +340,113 @@ class Game:
         def life_steal(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 생명을 흡수한다.")
             caster.heal(caster.max_health * 0.2 * skill.level)
-            target.take_damage(caster.attack * skill.level / 2)
+            target.take_damage(caster.attack * skill.power)
 
-        # 방어력 증가 10 * level * power
+        # 방어력 증가 level * power
         def iron_will(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 고통을 감내한다.")
-            caster.add_status_effect(StatusEffect("철의 의지", 3, defense_modifier=(10 * skill.level * skill.power)))
-
-        # 공격력 증가 5 * level * power
+            caster.add_status_effect(StatusEffect("철의 의지", 3, defense_modifier=(skill.level * skill.power)))
+        # 공격력 증가 level * power
         def war_cry(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}의 절규가 전장에 울린다.")
-            caster.add_status_effect(StatusEffect("전투의 함성", 2, attack_modifier=(5 * skill.level * skill.power)))
-
+            caster.add_status_effect(StatusEffect("전투의 함성", 2, attack_modifier=(skill.level * skill.power)))
         # 기절 skill.power 턴동안
         def stun(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}을(를) 무력화시킨다.")
             target.add_status_effect(StatusEffect("기절", int(skill.power), skip_turn=True))
-
         # 무적 power 턴동안
         def shadow(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 그림자가 된다.")
             caster.add_status_effect(StatusEffect("그림자 형상", skill.power, invincible=True))
-
+        # 방패로 강타 데미지 + 기절
+        def shiled_attack(caster, target, skill):
+            print(f"'{skill.name}' 발동... {caster.name}이(가) 방패로 강타한다.")
+            target.take_damage(caster.defense * (1 + skill.level/3) * skill.power)
+            target.add_status_effect(StatusEffect("기절", 0, skip_turn=True))
         # 공격력 50% 증가 3턴 (상수)
         def frenzy(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 광란에 휩싸인다.")
             caster.add_status_effect(StatusEffect("광란", 3, attack_modifier=caster.attack * 0.5))
-
-        # 매 턴 데미지 attack * 0.5 * level * power
-        def exsanguinate(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}의 피를 말린다.")
-            target.add_status_effect(StatusEffect("과다출혈", 3, damage_per_turn=caster.attack * 0.5 * skill.level * skill.power))
-
-        # 적 데미지 50% 약화
-        def cripple(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}의 힘줄을 끊는다.")
-            target.add_status_effect(StatusEffect("불구", 2, attack_modifier=-target.attack * 0.5))
-        
-        # 약자 멸시 주는피해 받는피해 100% 증가 999턴 (상수)
-        def scorn_the_weak(caster, target, skill):
-            print(f"'{skill.name}' 발동... 약자는 죽어야 마땅하다.")
-            target.add_status_effect(StatusEffect("약자멸시", 999, damage_taken_modifier=1.0, damage_dealt_modifier=1.0))
-
-        # 효과 없음
-        def taunt(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}을(를) 조롱한다......")
-            pass
-
-        # 적 데미지 20% 3턴 약화 (상수)
-        def weaken(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}을(를) 약화시킨다.")
-            target.add_status_effect(StatusEffect("약화", 3, attack_modifier=-target.attack * 0.2))
-
-        # 받는 피해 20% 증가 3턴 (상수)
-        def shatter_bone(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}의 뼈를 뒤틀어 놓는다.")
-            target.add_status_effect(StatusEffect("골절", 3, damage_taken_modifier=0.2))
-
-        # 받는피해 증가 
-        def hex(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}에게 끔찍한 저주를 내린다.")
-            target.add_status_effect(StatusEffect("저주", 3, damage_taken_modifier=skill.power))
-        
-        # 회피율증가 10 * level 3턴
-        def fade(caster, target, skill):
-            print(f"'{skill.name}' 발동... {caster.name}의 모습이 흐려진다.")
-            caster.add_status_effect(StatusEffect("흐릿한 형상", 3, evasion_modifier=0.1 * skill.level))
-        
         # 공격력 증가 power 턴 동안 1.5 + level / 2
         def hate(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 증오를 집중한다.")
             caster.add_status_effect(StatusEffect("증오 집중", skill.power, damage_dealt_modifier=(1.5 + skill.level / 2)))
-
-        # 몬스터용
-        def expose_weakness(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}의 약점을 드러낸다.")
-            target.add_status_effect(StatusEffect("약점 노출", 2, ignore_defense=True))
-        
+        # 매 턴 데미지 attack * 0.5 * level * power
+        def turn_damage(caster, target, skill):
+            print(f"'{skill.name}' 발동... {target.name}의 피를 말린다.")
+            target.add_status_effect(StatusEffect("과다출혈", 3 + skill.level, damage_per_turn=caster.attack * skill.power))
+        # 적 데미지 50% 약화
+        def cripple(caster, target, skill):
+            print(f"'{skill.name}' 발동... {target.name}의 힘줄을 끊는다.")
+            target.add_status_effect(StatusEffect("불구", 1 + skill.level, attack_modifier=-target.attack * 0.5))
+        # 약자 멸시 주는피해 받는피해 100% 증가 999턴 (상수)
+        def scorn_the_weak(caster, target, skill):
+            print(f"'{skill.name}' 발동... 약자는 죽어야 마땅하다.")
+            target.add_status_effect(StatusEffect("약자멸시", 999, damage_taken_modifier=1.0, damage_dealt_modifier=1.0))
+        # 효과 없음
+        def taunt(caster, target, skill):
+            print(f"'{skill.name}' 발동... {target.name}을(를) 조롱한다......")
+            pass
+        # 적 데미지 20% 3턴 약화 (상수)
+        def weaken(caster, target, skill):
+            print(f"'{skill.name}' 발동... {target.name}을(를) 약화시킨다.")
+            target.add_status_effect(StatusEffect("약화", 3, attack_modifier=-target.attack * 0.2))
+        # 적 받는 피해 20% 증가 3턴 (상수)
+        def shatter_bone(caster, target, skill):
+            print(f"'{skill.name}' 발동... {target.name}의 뼈를 뒤틀어 놓는다.")
+            target.add_status_effect(StatusEffect("골절", 3, damage_taken_modifier=0.2))
+        # 적 받는피해 증가
+        def hex(caster, target, skill):
+            print(f"'{skill.name}' 발동... {target.name}에게 끔찍한 저주를 내린다.")
+            target.add_status_effect(StatusEffect("저주", 2 + skill.level, damage_taken_modifier=skill.power))
+        # 회피율증가 10 * level 3턴
+        def fade(caster, target, skill):
+            print(f"'{skill.name}' 발동... {caster.name}의 모습이 흐려진다.")
+            caster.add_status_effect(StatusEffect("흐릿한 형상", 3, evasion_modifier=10 * skill.level))
+        # 방어무시 2 + level 턴
+        def break_armor(caster, target, skill):
+            print(f"'{skill.name}' 발동... {target.name}의 갑옷을 파괴한다.")
+            target.add_status_effect(StatusEffect("약점 노출", 2 + skill.level, ignore_defense=True))
+        # 적 부패 지속피해 (부패 최대체력 0 * 0.2)
         def blight(caster, target, skill):
             print(f"'{skill.name}' 발동... 부패의 구름이 {target.name}을(를) 감싼다.")
-            target.add_status_effect(StatusEffect("부패", 5, damage_per_turn=caster.attack * 0.05 * skill.level))
-
+            target.add_status_effect(StatusEffect("부패", skill.power, damage_per_turn=target.max_health * 0.2))
+        # 생명력 흡수 (흡수량 20% 고정)
         def drain_life(caster, target, skill):
             damage = caster.attack * 1.1
             print(f"'{skill.name}' 발동... {target.name}의 생명력을 흡수한다.")
             target.take_damage(damage)
             caster.heal(damage * 0.2 * skill.level)
-
+        # 적 힘봉인 2턴
         def silence(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}의 주문을 봉인한다.")
-            target.add_status_effect(StatusEffect("침묵", 2))
+            print(f"'{skill.name}' 발동... {target.name}의 힘을 봉인한다.")
+            target.add_status_effect(StatusEffect("침묵", skill.power))
 
+        # 공격력 30 * level, 방어력 -10 * level 3턴
         def reckless_abandon(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 모든 것을 내던진다.")
-            caster.add_status_effect(StatusEffect("무모한 분노", 3, attack_modifier=15 * skill.level, defense_modifier=-10 * skill.level))
-
+            caster.add_status_effect(StatusEffect("무모한 분노", 3, attack_modifier=30 * skill.level, defense_modifier=-10 * skill.level))
+       
+        # 회피율 40 증가 2턴
         def mirror_image(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}의 환영이 나타난다.")
-            caster.add_status_effect(StatusEffect("거울 환영", 2, evasion_modifier=0.25 * skill.level))
-
-            
+            caster.add_status_effect(StatusEffect("거울 환영", 1 + skill.level, evasion_modifier=40))
+        
+        # 방어력 20 * level 2턴
         def bone_armor(caster, target, skill):
-            print(f"'{skill.name}' 발동... 뼈 갑옷이 {caster.name}을(를) 감싼다. (방어력 + {20 * skill.level})")
+            print(f"'{skill.name}' 발동... 뼈 갑옷이 {caster.name}을(를) 감싼다.)")
             caster.add_status_effect(StatusEffect("뼈 갑옷", 2, defense_modifier=20 * skill.level))
 
+        # 적 회피율 2턴 무시
         def ensnare(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}의 발을 옭아맨다. (민첩성 -{0.2 * skill.level})")
-            target.add_status_effect(StatusEffect("올가미", 2, evasion_modifier=-0.2 * skill.level))
+            print(f"'{skill.name}' 발동... {target.name}의 발을 옭아맨다.")
+            target.add_status_effect(StatusEffect("올가미", 2, ignore_evasion=True))
         
         # 최대체력 * 0.15 * level * power 만큼 회복
         def heal(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 죽음의 경계에서 생명을 얻는다.")
             caster.heal(caster.max_health * 0.15 * skill.level * skill.power)
-
-        def thorn_mail(caster, target, skill):
-            print(f"'{skill.name}' 발동... {caster.name}이(가) 가시 돋친 갑옷을 입는다.")
-            caster.add_status_effect(StatusEffect("가시 갑옷", 3, defense_modifier=5 * skill.level))
-            
+        # 몬스터 전용 스킬
         def devour(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) {target.name}을(를) 집어삼키려 합니다!")
             damage = caster.attack * 2.5
@@ -458,12 +464,12 @@ class Game:
 
         def poison_breath(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 독기를 내뿜는다.")
-            target.add_status_effect(StatusEffect("중독", 3, damage_per_turn=caster.attack * 0.2))
+            target.add_status_effect(StatusEffect("중독", 3, damage_per_turn=caster.attack * 0.5))
 
         def whirlpool(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 소용돌이를 일으킨다.")
             target.take_damage(caster.attack * 1.2)
-            target.add_status_effect(StatusEffect("속박", 2, evasion_modifier=-0.2))
+            target.add_status_effect(StatusEffect("속박", 2, evasion_modifier=-20))
 
         def pestilence(caster, target, skill):
             print(f"'{skill.name}' 발동... 역병이 퍼진다.")
@@ -491,9 +497,10 @@ class Game:
             Skill("꿰뚫기", 1, 5, 1, 15, reaping, power=0.9),
             Skill("걷어차기", 1, 3, 1, 10, fixed_damage, power=20.0),
             Skill("기습", 1, 10, 1, 2, damage, power=1.5),
+            Skill("방패 밀어내기", 1, 5, 1, 10, shiled_attack, power=1.5),
 
             #피흡
-            Skill("물어 뜯기", 1, 2, 2, 3, life_steal, power=1.0),
+            Skill("물어뜯기", 1, 2, 2, 3, life_steal, power=1.0),
 
             #스탯강화
             Skill("강철의 의지", 1, 3, 1, 3, iron_will, power=3.0),
@@ -503,10 +510,10 @@ class Game:
             Skill("약화", 1, 3, 1, 10, weaken, power=-0.2),
             Skill("기절시키기", 1, 2, 1, 10, stun, power=1.0),
             Skill("증오", 1, 3, 1, 5, hate, power=1.0),
-            Skill("뼈 갑옷", 1, 3, 1, 2, bone_armor, power=20),
+            Skill("뼈 갑옷", 1, 3, 1, 2, bone_armor),
             Skill("올가미", 1, 2, 1, 3, ensnare, power=-0.2),
             Skill("응급 처치", 1, 3, 1, 1, heal, power=1.0),
-            Skill("가시 갑옷", 1, 3, 1, 3, thorn_mail, power=1.0),
+            Skill("갑옷 부수기", 1, 3, 1, 3, break_armor, power=1.0),
 
             # 기타
             Skill("조롱", 1, 3, 1, 2, taunt, power=1.0),
@@ -514,7 +521,8 @@ class Game:
         # 레어 등급 (2)
             
             #공격
-            Skill("강타", 1, 3, 2, 5, fixed_damage, power=50.0),
+            Skill("방패 강타", 1, 3, 1, 10, shiled_attack, power=2.0),
+            Skill("무릎 차기", 1, 3, 2, 5, fixed_damage, power=50.0),
             Skill("분쇄", 1, 5, 2, 8, pulverize, power=2.0),
             Skill("저돌적 돌진", 1, 2, 2, 2, advance_damage, power=1.5),
             Skill("칼날의 춤", 1, 3, 2, 3, flurry, power=0.9),
@@ -525,16 +533,17 @@ class Game:
             Skill("흡혈", 1, 3, 2, 3, drain_life, power=1.3),
 
             #지속피해
-            Skill("과다출혈", 1, 3, 2, 10, exsanguinate, power=1.0),
-            Skill("불구 만들기", 1, 2, 2, 2, cripple, power=-0.5),
+            Skill("과다출혈", 1, 3, 2, 10, turn_damage, power=1.0),
+
+            #적 피해 50% 약화
+            Skill("불구 만들기", 1, 2, 2, 5, cripple),
             #효과
-            Skill("광기", 1, 2, 2, 2, war_cry, power=30),
-            Skill("사술", 1, 2, 2, 3, hex, power=1.0),
-            Skill("약점 노출", 1, 2, 2, 1, hex, power=1.0),
-            #Skill("침묵의 인장", 1, 2, 2, 2, silence, power=2),
-            #Skill("무모한 분노", 1, 2, 2, 2, reckless_abandon, power=3),
-            #Skill("거울 환영", 1, 2, 2, 2, mirror_image, power=2),
-            #Skill("치명타", 1, 2, 2, 3, fatal_blow, power=1.8),
+            Skill("광기", 1, 2, 2, 5, war_cry, power=30),
+            Skill("저주", 1, 1, 2, 5, hex, power=1.0),
+            Skill("악의 기도", 1, 2, 2, 3, hex, power=1.0),
+            Skill("침묵의 인장", 1, 2, 2, 2, silence, power=2.0),
+            Skill("무모한 분노", 1, 2, 2, 2, reckless_abandon),
+            Skill("거울 환영", 1, 2, 2, 5, mirror_image),
 
         # 영웅 등급 (3)
 
@@ -544,59 +553,58 @@ class Game:
             Skill("파멸의 파동", 1, 1, 3, 5, damage, power=2.3),
             Skill("영혼의 복수", 1, 1, 10, 10, reaping, power=1.2),
             Skill("영혼 파괴", 1, 1, 3, 1, pulverize, power=4.0),
-            Skill("그림자 암살", 1, 1, 3, 2, flurry, power=1.5),
+            Skill("그림자 암살", 1, 1, 3, 5, flurry, power=3.0),
 
-            Skill("약자멸시", 1, 1, 3, 5, scorn_the_weak, power=1.0),
-            Skill("영혼 갈취", 1, 1, 3, 5, life_steal, power=2.5), # 피흡
-            Skill("전장의 군주", 1, 1, 3, 10, war_cry, power=50),
+            Skill("약자멸시", 1, 1, 3, 10, scorn_the_weak, power=1.0),
+            Skill("영혼 갈취", 1, 1, 3, 5, life_steal, power=2.5),
+            Skill("전장의 군주", 1, 1, 3, 10, war_cry, power=40),
             Skill("최후의 발악", 1, 1, 3, 1, iron_will, power=100.0),
 
             Skill("정화", 1, 1, 3, 1, lambda c, t, s: c.status_effects.clear(), power=1.0),
             Skill("어둠의 가호", 1, 1, 3, 1, bone_armor, power=40),
-            
-            Skill("피의 폭풍", 1, 1, 3, 2, exsanguinate, power=0.15),
+            Skill("흐릿한 형상", 1, 1, 3, 5, fade, power=3),
+            Skill("피의 폭풍", 1, 1, 3, 2, turn_damage, power=1.0),
             Skill("무력화의 저주", 1, 1, 3, 2, weaken, power=-0.3),
-            Skill("실명의 빛", 1, 1, 3, 2, stun, power=1),
-            Skill("초월적인 존재", 1, 1, 3, 1, shadow, power=1),
+            Skill("실명의 빛", 1, 1, 3, 2, stun, power=3.0),
+            Skill("초월의 그림자", 1, 1, 3, 1, shadow, power=3.0),
 
         # 전설 등급 (4)
 
             Skill("유성우", 1, 1, 4, 3, advance_damage, power=5.0),
-            Skill("대지 가르기", 1, 10, 4, 10, advance_damage, power=1.2),
+            Skill("대지 가르기", 1, 10, 4, 4, advance_damage, power=1.2),
             Skill("세계의 종말", 1, 1, 4, 1, advance_damage, power=6.0),
             Skill("심판", 1, 4, 4, 10, execute, power=3.0),
             Skill("파멸의 일격", 1, 1, 4, 1, pulverize, power=10.0),
 
             #피흡
             Skill("영혼 포식", 1, 1, 4, 1, life_steal, power=4.0),
-            Skill("철옹성", 1, 1, 4, 1, iron_will, power=30.0),
-            Skill("태초 복구", 1, 1, 4, 3, heal, power=100.0), # 체력 전부 회복
+            Skill("철옹성", 1, 1, 4, 5, iron_will, power=30.0),
+            Skill("태초 복구", 1, 1, 4, 5, heal, power=100.0), # 체력 전부 회복
 
             Skill("광전사의 격노", 1, 1, 4, 1, frenzy, power=0.5),
-            Skill("불멸", 1, 1, 4, 1, shadow, power=4),
-            
-            Skill("고대의 외침", 1, 1, 4, 1, war_cry, power=10),
-            Skill("신벌", 1, 5, 4, 2, execute, power=3.5),
+            Skill("불멸의 그림자", 1, 1, 4, 2, shadow, power=4.0),
+
+            Skill("고대의 외침", 1, 1, 4, 5, war_cry, power=50),
+            Skill("신벌", 1, 3, 4, 3, execute, power=3.5),
             Skill("차원 붕괴", 1, 1, 4, 1, pulverize, power=3.2),
-            Skill("아마겟돈", 1, 1, 4, 1, advance_damage, power=3.5),
-            Skill("절대자의 권능", 1, 1, 4, 1, frenzy, power=0.6),
+            Skill("아마겟돈", 1, 1, 4, 1, execute, power=10.0),
 
 
 
         # 몬스터 전용
             Skill("사라지기", 1, 1, 5, 2, shadow, power=2.0,is_monster_only=True),
             Skill("뼈 부수기", 1, 1, 5, 2, shatter_bone, power=1.0,is_monster_only=True),
-            Skill("부패의 손길", 1, 1, 5, 99, weaken, power=-0.3,is_monster_only=True),
+            Skill("부패의 손길", 1, 1, 5, 99, weaken, is_monster_only=True),
             Skill("대지 분쇄", 1, 1, 5, 2, advance_damage, power=2.0,is_monster_only=True),
-            Skill("역병의 숨결", 1, 1, 5, 5, blight, power=0.07,is_monster_only=True),
+            Skill("역병의 숨결", 1, 1, 5, 5, blight, power=2,is_monster_only=True),
             Skill("시간 왜곡", 1, 1, 5, 99, lambda c, t, s: print("시간의 흐름이 뒤틀린다."),is_monster_only=True),
             Skill("전염병", 1, 1, 5, 99, pestilence, is_monster_only=True, power=5),
             Skill("석화의 시선", 1, 1, 5, 99, petrifying_gaze, is_monster_only=True, power=1),
             Skill("영혼 흡수 오라", 1, 1, 5, 99, soul_drain_aura, is_monster_only=True, power=0.8),
             Skill("혐오체 소환", 1, 1, 5, 99, summon_abomination, is_monster_only=True, power=99),
             Skill("죽음의 손아귀", 1, 1, 5, 99, execute, is_monster_only=True, power=1.5),
-            Skill("공포의 눈빛", 1, 1, 5, 99, weaken, is_monster_only=True, power=-0.4),
-            Skill("부패시키는 저주", 1, 1, 5, 99, exsanguinate, is_monster_only=True, power=0.2),
+            Skill("공포의 눈빛", 1, 1, 5, 99, weaken, is_monster_only=True),
+            Skill("부패시키는 저주", 1, 1, 5, 99, turn_damage, is_monster_only=True, power=0.2),
             Skill("지옥불 폭풍", 1, 1, 5, 99, advance_damage, is_monster_only=True, power=2.8),
             Skill("영혼의 절규", 1, 1, 5, 99, silence, is_monster_only=True, power=2),
             Skill("포식", 1, 1, 5, 99, devour, is_monster_only=True, power=3.0),
@@ -616,49 +624,109 @@ class Game:
             Equipment("녹슨 냄비 뚜껑", "무기", 2, attack=2, defense=8, price=20),
 
             Equipment("부서진 도끼", "무기", 3, attack=14, price=37),
-            Equipment("부식된 단검", "무기", 3, attack=10, critical=1000, price=37),
-            Equipment("녹슨 식칼", "무기", 3, attack=10, critical=2000,price=42),
+            Equipment("부식된 단검", "무기", 3, attack=10, critical=10, price=37),
+            Equipment("녹슨 식칼", "무기", 3, attack=10, critical=20,price=42),
 
             Equipment("강철 브로드소드", "무기", 4, attack=20, price=80),
             Equipment("양날 도끼", "무기", 4, attack=25, price=87),
             Equipment("전사의 대검", "무기", 4, attack=30, price=105),
             Equipment("해골 파쇄기", "무기", 4, health=50, attack=20, price=125),
-            Equipment("전투용 철퇴", "무기", 4, attack=27, defense=8, critical=10 ,price=130),
-            Equipment("전사의 방패", "무기", 4, attack=5, defense=17, price=95),
-            Equipment("전투로 닳고 닳은 창", "무기", 4, attack=20, critical=20, price=210),
+            Equipment("전투용 철퇴", "무기", 4, attack=27, defense=8, critical=10, price=130),
+            Equipment("전사의 방패", "무기", 4, attack=5, defense=20, health=70, price=95),
+            Equipment("전투로 닳고 닳은 창", "무기", 4, attack=20, critical=20, price=95),
 
-            Equipment("피에 굶주린 전투도끼", "무기", 5, attack=40, price=370),
-            Equipment("룬이 새겨진 클레이모어", "무기", 5, attack=60, defense=5, price=400),
-            Equipment("암흑 기사의 롱소드", "무기", 5, attack=80, price=490),
-            Equipment("피의 서약 대검", "무기", 5, attack=50, defense=-10, price=180),
-            Equipment("수호자의 철퇴", "무기", 5, attack=16, defense=10, price=160),
+            Equipment("피에 굶주린 전투도끼", "무기", 5, attack=40, price=190),
+            Equipment("룬이 새겨진 클레이모어", "무기", 5, attack=60, defense=5, price=210),
+            Equipment("암흑 기사의 롱소드", "무기", 5, attack=49, price=240),
+            Equipment("피의 서약 대검", "무기", 5, attack=48, health=-40, price=190),
+            Equipment("수호자의 철퇴", "무기", 5, attack=42, defense=20, price=250),
 
-            Equipment("용의 송곳니", "무기", 6, attack=22, health=20, price=300),
-            Equipment("용의 비늘 도끼", "무기", 6, attack=20, health=150,price=350),
+            Equipment("용의 송곳니", "무기", 6, attack=67, health=200, price=650),
+            Equipment("용의 비늘 도끼", "무기", 6, attack=20, health=400, price=700),
+            Equipment("용의 심장 검", "무기", 6, attack=75, critical=25, price=720),
+            Equipment("피의 서약 카타나", "무기", 6, attack=50, health=-100, critical = 100, price=600),
 
-
-            Equipment("용뼈 망치", "무기", 8, attack=25, health=100, price=200),
-            Equipment("신성 모독의 검", "무기", 8, attack=100, health=30, price=250),
+            Equipment("용뼈 망치", "무기", 8, attack=95, health=600, price=920),
+            Equipment("신성 모독의 대검", "무기", 8, attack=100, critical=40, price=820),
+            Equipment("광란의 방패", "무기", 8, attack=30, defense=75, critical=20, price=500),
         ])
         self.all_equipment.extend([
-            Equipment("해진 가죽 흉갑", "흉갑", 1, defense=4, price=10),
-            Equipment("녹슨 사슬 흉갑", "흉갑", 2, defense=8, price=30),
-            Equipment("찌그러진 판금 흉갑", "흉갑", 4, defense=18, price=80),
-            Equipment("용비늘 흉갑", "흉갑", 8, defense=30, health=30, price=200),
-            Equipment("강철 흉갑", "흉갑", 1, defense=5, health=5, price=15),
-            Equipment("가시 박힌 타워 흉갑", "흉갑", 5, defense=12, health=20, price=150),
-            Equipment("암흑 기사의 흉갑", "흉갑", 3, defense=10, price=50),
-            Equipment("피의 흉갑", "흉갑", 7, defense=22, price=180),
-            Equipment("영웅의 유해 흉갑", "흉갑", 8, defense=20, health=15, price=160),
-            Equipment("신성 모독의 흉갑", "흉갑", 9, defense=50, health=500, price=5000),
+            Equipment("해진 가죽옷", "흉갑", 1, defense=4, price=10),
+
+            Equipment("끊어진 사슬 갑옷", "흉갑", 2, defense=6, price=30),
+            Equipment("낡은 가죽 갑옷", "흉갑", 2, defense=5, health=10, price=25),
+            Equipment("녹슨 철제 흉갑", "흉갑", 2, defense=8, price=40),
+            Equipment("낡은 튜닉", "흉갑", 2, defense=4, critical=5, price=30),
+
+            Equipment("사슬 흉갑", "흉갑", 3, defense=10, price=70),
+            Equipment("가죽 흉갑", "흉갑", 3, defense=8, health=20, price=60),
+            Equipment("낡은 강철 흉갑", "흉갑", 3, defense=12, price=80),
+            Equipment("무술가의 도복 상의", "흉갑", 3, critical=10, price=100),
+            Equipment("달인의 도복 상의", "흉갑", 3, critical=20, price=200),
+            Equipment("민첩한 도적의 가죽옷", "흉갑", 3, defense=8, evasion=15, price=90),
+
+            Equipment("광전사의 흉갑", "흉갑", 4, attack=30, defense=-20, price=150),
+            Equipment("강철 흉갑", "흉갑", 4, defense=15, health=50, price=150),
+            Equipment("기사의 흉갑", "흉갑", 4, defense=20, price=200),
+            Equipment("암흑 흉갑", "흉갑", 4, defense=10, critical=15, price=180),
+            Equipment("전사의 흉갑", "흉갑", 5, defense=25, price=220),
+            Equipment("수호자의 흉갑", "흉갑", 5, defense=30, health=100, price=250),
+            Equipment("암흑 기사 흉갑", "흉갑", 5, defense=20, critical=25, price=270),
+            Equipment("피의 서약 흉갑", "흉갑", 5, attack=20, health=-40, price=230),
+
+            Equipment("용의 비늘 흉갑", "흉갑", 7, defense=40, health=200, price=350),
+            Equipment("용의 뼈 흉갑", "흉갑", 7, defense=50, price=380),
         ])
         self.all_equipment.extend([
-            Equipment("가죽 투구", "투구", 1, defense=2, price=5),
-            Equipment("철 투구", "투구", 2, defense=4, price=15),
-            Equipment("강철 투구", "투구", 4, defense=8, price=30),
-            Equipment("가죽 각반", "각반", 1, defense=2, price=5),
-            Equipment("철 각반", "각반", 2, defense=4, price=15),
-            Equipment("강철 각반", "각반", 4, defense=8, price=30),
+            Equipment("썩은 나무 투구", "투구", 1, health=10, price=5),
+            Equipment("해진 가죽 모자", "투구", 1, health=25, price=10),
+            Equipment("끊어진 사슬 갑옷", "투구", 2, health=60, price=30),
+            Equipment("낡은 가죽 투구", "투구", 2, health=50, price=25),
+            Equipment("녹슨 철제 투구", "투구", 2, health=70, price=28),
+
+            Equipment("사슬 투구", "투구", 3, health=70, price=92),
+            Equipment("가죽 투구", "투구", 3, health=160, price=48),
+            Equipment("낡은 강철 투구", "투구", 3, health=120, price=43),
+            Equipment("무술가의 머리띠", "투구", 3, critical=8, price=50),
+            Equipment("달인의 머리띠", "투구", 3, critical=14, price=80),
+            Equipment("민첩한 도적의 두건", "투구", 3, defense=4, evasion=10, price=70),
+
+            Equipment("광전사의 투구", "흉갑", 4, attack=30, health=-50, price=120),
+            Equipment("강철 투구", "투구", 4, health=175, defense=15, price=110),
+            Equipment("기사의 투구", "투구", 4, health=200, price=170),
+            Equipment("암흑 투구", "투구", 4, health=50, attack=8, price=120),
+            Equipment("전사의 투구", "투구", 5, health=250, price=220),
+            Equipment("수호자의 투구", "투구", 5, health=270, defense=15, price=220),
+            Equipment("암흑 기사 투구", "투구", 5, health=120, attack=12, price=270),
+            Equipment("피의 서약 투구", "투구", 5, attack=15, health=-35, price=220),
+
+
+            Equipment("용의 비늘 투구", "투구", 7, defense=20, health=230, price=320),
+            Equipment("용의 뼈 투구", "투구", 7, defense=20, price=400),
+        ])
+        self.all_equipment.extend([
+            Equipment("썩은 운동화", "각반", 1, evasion=2, price=5),
+            Equipment("해진 가죽 신발", "각반", 1, evasion=5, price=10),
+            Equipment("끊어진 사슬 각반", "각반", 2, evasion=8, price=30),
+            Equipment("낡은 가죽 신발", "각반", 2, evasion=7, health=10, price=25),
+            Equipment("녹슨 철제 각반", "각반", 2, evasion=10, price=40),
+            Equipment("사슬 각반", "각반", 3, evasion=12, price=70),
+            Equipment("가죽 각반", "각반", 3, evasion=10, health=20, price=60),
+            Equipment("낡은 강철 각반", "각반", 3, evasion=15, price=80),
+            Equipment("민첩한 도적의 장화", "각반", 3, evasion=20, defense=4, price=90),
+            Equipment("무술가의 신발", "각반", 3, evasion=15, critical=10, price=100),
+            Equipment("달인의 신발", "각반", 3, evasion=20, critical=20, price=200),
+            Equipment("광전사의 각반", "각반", 4, attack=30, evasion=-10, price=150),
+            Equipment("강철 각반", "각반", 4, evasion=20, health=50, price=150),
+            Equipment("기사의 각반", "각반", 4, evasion=25, price=200),
+            Equipment("암흑 각반", "각반", 4, evasion=15, critical=15, price=180),
+            Equipment("전사의 각반", "각반", 5, evasion=30, price=220),
+            Equipment("수호자의 각반", "각반", 5, evasion=25, health=100, price=250),
+            Equipment("암흑 기사 각반", "각반", 5, evasion=20, critical=25, price=270),
+            Equipment("피의 서약 각반", "각반", 5, attack=20, health=-40, price=230),
+            Equipment("용의 비늘 각반", "각반", 7, evasion=30, health=200, price=350),
+            Equipment("용의 뼈 각반", "각반", 7, evasion=35, price=400),
+
         ])
         self.all_equipment.extend([
             Equipment("해골 장신구", "장신구", 1, health=10, attack=2, defense=2, price=20),
@@ -675,11 +743,11 @@ class Game:
     def _initialize_monsters(self):
         self.all_monsters.extend([
             Monster("부패한 수액괴물", 1, False, 20, 5, 2, 10, 10, 5, [self.get_skill("부패의 손길")]),
-            Monster("비웃는 임프", 1, False, 25, 7, 3, 10, 10, 7, [self.get_skill("꿰뚫기")]),
-            Monster("역병 쥐", 1, False, 15, 6, 1, 20, 10, 4, [self.get_skill("약화")]),
-            Monster("흡혈박쥐", 1, False, 18, 5, 2, 30, 10, 5, [self.get_skill("생명 흡수")]),
-            Monster("동굴 어둠살이", 1, False, 22, 6, 3, 10, 10, 6, [self.get_skill("기습")]),
-            Monster("그림자 임프 군주", 1, True, 80, 12, 5, 10, 20, 50, [self.get_skill("꿰뚫기"), self.get_skill("사라지기")]),
+            Monster("비웃는 임프", 1, False, 25, 10, 3, 10, 10, 6, [self.get_skill("꿰뚫기")]),
+            Monster("역병 쥐", 1, False, 15, 6, 1, 20, 10, 3, [self.get_skill("약화")]),
+            Monster("흡혈박쥐", 1, False, 18, 5, 2, 30, 10, 5, [self.get_skill("물어뜯기")]),
+            Monster("동굴 어둠살이", 1, False, 22, 6, 3, 10, 10, 4, [self.get_skill("기습")]),
+            Monster("그림자 임프 군주", 1, True, 40, 12, 5, 10, 20, 20, [self.get_skill("꿰뚫기"), self.get_skill("사라지기")]),
         ])
         self.all_monsters.extend([
             Monster("광포한 오크", 2, False, 50, 10, 5, 10, 10, 10, [self.get_skill("분쇄")]),
@@ -687,39 +755,39 @@ class Game:
             Monster("썩어가는 놀", 2, False, 50, 11, 4, 20, 10, 11, [self.get_skill("부패의 손길")]),
             Monster("굶주린 늑대", 2, False, 60, 13, 3, 30, 10, 10, [self.get_skill("과다출혈")]),
             Monster("해골 병사", 2, False, 50, 10, 8, 10, 10, 13, [self.get_skill("뼈 부수기")]),
-            Monster("오크 전쟁군주", 2, True, 150, 15, 8, 10, 20, 100, [self.get_skill("분쇄"), self.get_skill("전쟁의 포효")]),
+            Monster("오크 전쟁군주", 2, True, 120, 15, 8, 10, 20, 50, [self.get_skill("분쇄"), self.get_skill("전쟁의 포효")]),
         ])
         self.all_monsters.extend([
-            Monster("걸어다니는 시체", 3, False, 100, 15, 8, 10, 10, 15, [self.get_skill("생명 갈취")]),
-            Monster("시체 포식자 구울", 3, False, 120, 17, 6, 10, 10, 17, [self.get_skill("포식")]),
-            Monster("울부짖는 와이트", 3, False, 100, 16, 5, 20, 10, 16, [self.get_skill("영혼의 절규")]),
-            Monster("돌가죽 가고일", 3, False, 120, 14, 10, 10, 10, 18, [self.get_skill("석화의 시선")]),
-            Monster("탐욕의 미믹", 3, False, 110, 18, 12, 5, 20, 25, [self.get_skill("기절시키기")]),
-            Monster("고대 리치", 3, True, 200, 25, 15, 10, 20, 150, [self.get_skill("죽음의 손아귀"), self.get_skill("뼈 갑옷"), self.get_skill("침묵의 인장")]),
+            Monster("걸어다니는 시체", 3, False, 100, 15, 8, 10, 10, 19, [self.get_skill("생명 갈취")]),
+            Monster("시체 포식자 구울", 3, False, 120, 17, 6, 10, 10, 20, [self.get_skill("포식")]),
+            Monster("울부짖는 와이트", 3, False, 100, 16, 5, 20, 10, 21, [self.get_skill("영혼의 절규")]),
+            Monster("돌가죽 가고일", 3, False, 120, 14, 10, 10, 10, 23, [self.get_skill("석화의 시선")]),
+            Monster("탐욕의 미믹", 3, False, 110, 18, 12, 1, 20, 22, [self.get_skill("기절시키기")]),
+            Monster("고대 리치", 3, True, 250, 25, 15, 10, 20, 100, [self.get_skill("죽음의 손아귀"), self.get_skill("뼈 갑옷"), self.get_skill("침묵의 인장")]),
         ])
         self.all_monsters.extend([
-            Monster("미궁의 미노타우르스", 4, False, 150, 22, 10, 10, 15, 39, [self.get_skill("저돌적 돌진")]),
+            Monster("미궁의 미노타우르스", 4, False, 150, 22, 10, 10, 15, 19, [self.get_skill("저돌적 돌진")]),
             Monster("비명지르는 하피", 4, False, 120, 20, 8, 30, 10, 30, [self.get_skill("영혼의 절규")]),
-            Monster("복수심에 불타는 켄타우로스", 130, False, 70, 25, 9, 20, 10, 50, [self.get_skill("칼날의 춤")]),
+            Monster("복수심에 불타는 켄타우로스", 4, False, 150, 70, 25, 9, 20, 27,[self.get_skill("칼날의 춤")]),
             Monster("폭풍의 그리폰", 4, False, 140, 24, 12, 15, 10, 26, [self.get_skill("실명의 빛")]),
             Monster("외눈의 사이클롭스", 4, False, 125, 28, 15, 5, 10, 30, [self.get_skill("대지 분쇄")]),
-            Monster("석화의 메두사", 4, True, 157, 35, 18, 20, 25, 250, [self.get_skill("석화의 시선"), self.get_skill("독액 분출")]),
+            Monster("석화의 메두사", 4, True, 370, 35, 18, 20, 25, 250, [self.get_skill("석화의 시선"), self.get_skill("독액 분출")]),
         ])
         self.all_monsters.extend([
-            Monster("흑요석 골렘", 5, False, 180, 30, 20, 0, 10, 185, [self.get_skill("강철의 의지")]),
-            Monster("독액의 와이번", 5, False, 190, 35, 15, 20, 15, 216, [self.get_skill("역병의 숨결")]),
+            Monster("흑요석 골렘", 5, False, 180, 30, 20, 0, 10, 40, [self.get_skill("강철의 의지")]),
+            Monster("독액의 와이번", 5, False, 190, 35, 15, 20, 15, 49, [self.get_skill("역병의 숨결")]),
             Monster("죽음의 시선 바실리스크", 5, False, 200, 32, 18, 10, 10, 170, [self.get_skill("석화의 시선")]),
             Monster("심연의 나가", 5, False, 210, 38, 16, 25, 15, 40, [self.get_skill("침묵의 인장")]),
             Monster("타락한 서큐버스", 5, False, 220, 40, 14, 30, 20, 45, [self.get_skill("생명 갈취")]),
-            Monster("악몽의 키메라", 5, True, 400, 45, 25, 15, 30, 400, [self.get_skill("화염 숨결"), self.get_skill("독액 분출"), self.get_skill("빙결 숨결")]),
+            Monster("악몽의 키메라", 5, True, 490, 45, 25, 15, 30, 400, [self.get_skill("화염 숨결"), self.get_skill("독액 분출"), self.get_skill("빙결 숨결")]),
         ])
         self.all_monsters.extend([
             Monster("심해의 정령", 6, False, 270, 40, 25, 20, 10, 45, [self.get_skill("올가미")]),
             Monster("화염의 정령", 6, False, 250, 45, 22, 20, 15, 48, [self.get_skill("지옥불 폭풍")]),
             Monster("소용돌이의 정령", 6, False, 245, 42, 20, 30, 10, 46, [self.get_skill("칼날의 춤")]),
             Monster("대지의 정령", 6, False, 210, 38, 30, 10, 10, 50, [self.get_skill("대지 분쇄")]),
-            Monster("그림자 암살자", 6, False, 200, 50, 18, 40, 25, 55, [self.get_skill("그림자 암살")]),
-            Monster("심연의 히드라", 6, True, 550, 55, 30, 10, 20, 550, [self.get_skill("포식"), self.get_skill("독액 분출"), self.get_skill("저주")]),
+            Monster("그림자 암살자", 6, False, 120, 60, 18, 40, 25, 55, [self.get_skill("그림자 암살")]),
+            Monster("심연의 히드라", 6, True, 670, 55, 30, 10, 20, 550, [self.get_skill("포식"), self.get_skill("독액 분출"), self.get_skill("저주")]),
         ])
         self.all_monsters.extend([
             Monster("지옥의 병사", 7, False, 320, 55, 30, 10, 15, 60, [self.get_skill("전쟁의 포효")]),
@@ -735,7 +803,7 @@ class Game:
             Monster("폭풍 거인", 8, False, 400, 72, 35, 20, 15, 82, [self.get_skill("실명의 빛")]),
             Monster("고대 용거북", 8, False, 460, 65, 60, 0, 10, 100, [self.get_skill("철옹성")]),
             Monster("죽음의 기사", 8, False, 600, 80, 50, 15, 20, 110, [self.get_skill("죽음의 손아귀")]),
-            Monster("심해의 레비아탄", 8, True, 1000, 85, 50, 10, 30, 900, [self.get_skill("대지 가르기"), self.get_skill("소용돌이")]),
+            Monster("심해의 레비아탄", 8, True, 1080, 85, 50, 10, 30, 900, [self.get_skill("대지 가르기"), self.get_skill("소용돌이")]),
         ])
         self.all_monsters.extend([
             Monster("고위 악마", 9, False, 700, 85, 50, 15, 20, 120, [self.get_skill("지옥불 폭풍")]),
@@ -743,14 +811,14 @@ class Game:
             Monster("공허의 약탈자", 9, False, 680, 90, 45, 25, 20, 125, [self.get_skill("차원 붕괴")]),
             Monster("고대 정령", 9, False, 650, 80, 60, 10, 15, 140, [self.get_skill("정화의 불길")]),
             Monster("신화 속 야수", 9, False, 600, 95, 55, 10, 25, 150, [self.get_skill("태초의 광기")]),
-            Monster("타락한 대천사", 9, True, 1300, 100, 60, 20, 35, 1200, [self.get_skill("신벌"), self.get_skill("처단"), self.get_skill("전염병")]),
+            Monster("타락한 대천사", 9, True, 1320, 100, 60, 20, 35, 1200, [self.get_skill("신벌"), self.get_skill("처단"), self.get_skill("전염병")]),
         ])
         self.all_monsters.extend([
-            Monster("고룡", 10, False, 1100, 100, 70, 10, 25, 200, [self.get_skill("화염 숨결")]),
-            Monster("서리 고룡", 10, False, 900, 110, 65, 15, 25, 220, [self.get_skill("빙결 숨결")]),
-            Monster("암흑 고룡", 10, False, 980, 120, 60, 20, 25, 250, [self.get_skill("역병의 숨결")]),
-            Monster("분노의 고룡", 10, False, 890, 130, 80, 10, 30, 300, [self.get_skill("광전사의 격노")]),
-            Monster("황금 고룡", 10, False, 857, 110, 90, 10, 20, 1000, [self.get_skill("신의 가호")]),
+            Monster("고룡", 10, False, 1100, 100, 70, 10, 25, 0, [self.get_skill("화염 숨결")]),
+            Monster("서리 고룡", 10, False, 900, 110, 65, 15, 25, 0, [self.get_skill("빙결 숨결")]),
+            Monster("암흑 고룡", 10, False, 980, 120, 60, 20, 25, 0, [self.get_skill("역병의 숨결")]),
+            Monster("분노의 고룡", 10, False, 1230, 130, 80, 10, 30, 0, [self.get_skill("광전사의 격노")]),
+            Monster("황금 고룡", 10, False, 1120, 110, 90, 10, 20, 0, [self.get_skill("신의 가호")]),
             Monster("심연의 끝", 10, True, 2000, 150, 80, 20, 50, 0, [self.get_skill("존재 소각"), self.get_skill("영겁의 나락"), self.get_skill("지옥불 폭풍")]),
         ])
 
@@ -854,7 +922,7 @@ class Game:
         time.sleep(1)
         boss = self.get_random_monster(self.stage, is_boss=True)
         if self.battle(boss):
-            self.player.heal(self.player.max_health)
+            self.player.heal(round(self.player.max_health * 0.5))
             self.stage += 1
             self.shop()
         else:
@@ -874,8 +942,6 @@ class Game:
     def battle(self, monster):
         print(f"\n{monster.name}이(가) 모습을 드러냈다.\n")
         time.sleep(1)
-        monster.show_stats()
-        time.sleep(1)
         while self.player.is_alive() and monster.is_alive():
             for character in [self.player, monster]:
                 for effect in character.status_effects[:]:
@@ -887,6 +953,7 @@ class Game:
 
             if not monster.is_alive(): break
 
+            
             self.player_turn(monster)
             if not monster.is_alive(): break
 
@@ -907,39 +974,54 @@ class Game:
             return False
 
     def player_turn(self, monster):
+        monster.show_stats()
         self.player.show_stats()
-        print("1. 휘두르기 Lv.1 (*)")
-        for i, skill in enumerate(self.player.skills):
-            print(f"{i+2}. {skill.name} Lv.{skill.level} ({skill.use_count}/{skill.initial_use_count})")
-        while True:
-            try:
-                choice = int(input("행동을 선택하자: "))
-                if 1 <= choice <= len(self.player.skills) + 1:
-                    break
-                else:
-                    print("어둠 속에서 길을 잃었는가? 다시 선택하라.")
-            except ValueError:
-                print("알 수 없는 속삭임이다. 명확한 답을 내놓아라.")
-
-        if choice == 1:
-            #self.player.deal_physical_damage(monster, self.player.attack)
-            self.player.deal_damage(monster, self.player.attack)
+        time.sleep(0.5)
+        if self.player.has_status("기절"):
+            print("너는 기절 상태이다. 행동할 수 없다.")
+            time.sleep(1.5)
         else:
-            skill = self.player.skills[choice-2]
-            skill.execute(self.player, monster)
-            if skill.use_count <= 0:
-                self.player.skills.remove(skill)
-                print(f"{skill.name}의 힘을 모두 소진했다.\n")
+            print("\n1. 휘두르기 Lv.1 (*)")
+            if self.player.has_status("침묵"):
+                print("너는 침묵 상태이다. 힘을 사용할 수 없다.")
+                time.sleep(0.5)
+            else:
+                for i, skill in enumerate(self.player.skills):
+                    print(f"{i+2}. {skill.name} Lv.{skill.level} ({skill.use_count}/{skill.initial_use_count})")
+                    time.sleep(0.5)
+            while True:
+                try:
+                    choice = int(input("행동을 선택하자: "))
+                    if 1 <= choice <= len(self.player.skills) + 1:
+                        break
+                    else:
+                        print("어둠 속에서 길을 잃었는가? 다시 선택하라.")
+                except ValueError:
+                    print("알 수 없는 속삭임이다. 명확한 답을 내놓아라.")
+
+            if choice == 1:
+                #self.player.deal_physical_damage(monster, self.player.attack)
+                self.player.deal_damage(monster, self.player.attack)
+            else:
+                skill = self.player.skills[choice-2]
+                skill.execute(self.player, monster)
+                if skill.use_count <= 0:
+                    self.player.skills.remove(skill)
+                    print(f"{skill.name}의 힘을 모두 소진했다.\n")
         time.sleep(1.5)
 
     def monster_turn(self, monster_obj):
-        if monster_obj.skills and random.random() < 0.3:
-            skill = random.choice(monster_obj.skills)
-            print(f"{monster_obj.name}이(가) {skill.name}을(를) 사용한다.")
-            skill.execute(monster_obj, self.player)
+        if monster_obj.has_status("기절"):
+            print(f"{monster_obj.name}은(는) 기절 상태이다. 행동할 수 없다.")
+            time.sleep(1.5)
         else:
-            print(f"{monster_obj.name}의 공격.")
-            monster_obj.deal_damage(self.player, monster_obj.attack)
+            if monster_obj.skills and random.random() < 0.3 and not self.monster_obj.has_status("침묵"):
+                skill = random.choice(monster_obj.skills)
+                print(f"{monster_obj.name}이(가) {skill.name}을(를) 사용한다.")
+                skill.execute(monster_obj, self.player)
+            else:
+                print(f"{monster_obj.name}의 공격.")
+                monster_obj.deal_damage(self.player, monster_obj.attack)
         time.sleep(1.5)
 
     def battle_reward(self, is_boss):
@@ -965,10 +1047,7 @@ class Game:
             choices_data.append(("예리함 연마", "critical", crit_increase, "강타"))
     
         for i, (name, stat_key, value, unit_text) in enumerate(choices_data):
-            if stat_key == "critical":
-                print(f"{i+1}. {name} (+{value:.1f}% {unit_text})\n")
-            else:
-                print(f"{i+1}. {name} (+{value} {unit_text})\n")
+            print(f"{i+1}. {name} (+{value} {unit_text})\n")
             time.sleep(0.5)
     
         while True:
@@ -1058,6 +1137,7 @@ class Game:
         for i, skill in enumerate(choices):
             current_level = next((s.level for s in self.player.skills if s.name == skill.name), 0)
             print(f"{i+1}. {skill.name} (시전 가능 횟수: {skill.use_count}, 희귀도: {skill.rarity}, 레벨: {current_level}/{skill.max_level}\n")
+            time.sleep(0.5)
         print(f"{len(choices)+1}. 이 힘을 거부한다.\n")
 
         while True:
@@ -1117,7 +1197,7 @@ class Game:
         print("\n[ 수상한 상점 ]")
         time.sleep(1)
         print("필요한 게 있나, 이방인...?\n")
-        time.sleep(1)
+        time.sleep(2)
         self.player.show_stats()
         self.player.show_inv()
         time.sleep(1)
@@ -1142,6 +1222,7 @@ class Game:
                 stats_str = ", ".join(stats_display)
                 
                 print(f"{i+1}. {item.name} ({item.part}) - {item.price}G ({stats_str})")
+                time.sleep(0.5)
             print(f"{len(shop_inventory)+1}. 떠난다\n")
 
             while True:
