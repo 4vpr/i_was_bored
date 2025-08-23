@@ -1,4 +1,5 @@
-__i was bored.py__
+
+## i was bored.py
 
 간단?한 텍스트 진행 턴제 로그라이크 게임입니다.  
 스킬을 적절히 분배하고 레벨업해서 적들을 물리쳐봐요.
@@ -14,3 +15,5 @@ __i was bored.py__
 콘솔창이 어두칙칙 하길래 어둑어둑 다크판타지하게 만들어봤습니다.
 
 todo) 스킬 밸런스 조정, 툴팁 제공, pygame 라이브러리 사?용 할?까 말?까, 재밌는 효과를 가진 장신구 제작
+
+[다운로드](https://github.com/4vpr/i_was_bored/releases/download/0.0.2a/i_was_bored.py)  
