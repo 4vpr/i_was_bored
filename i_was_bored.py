@@ -126,9 +126,7 @@ class Character:
             print(f"{self.name}의 육신은 상처를 거부했다.")
             return
 
-        # Evasion Calculation
         evasion_chance = self.evasion / 100
-        # Cap evasion at 70%
         evasion_chance = min(evasion_chance, 70 / 100) 
         if random.random() < evasion_chance and self.evasion > 0 and not any(e.ignore_evasion for e in self.status_effects):
             print(f"{self.name}이(가) 공격을 회피했다!")
@@ -159,7 +157,9 @@ class Character:
     def deal_damage(self, target, base_damage, is_skill=False):
         critical_multiplier = 1.0
         if random.random() < self.critical / 100:
-            critical_multiplier = 2.0 # 치명타 배율
+            critical_multiplier = 1.5 # 치명타 배율
+            if self.critial > 100:
+                critical_multiplier += self.critical / 100 - 1
             print(f"{self.name}은(는) {target.name}의 급소를 찔렀다.")
             time.sleep(0.5)
         
@@ -196,18 +196,15 @@ class Character:
                 skip_turn_active = True
                 print(f"{self.name}은(는) {effect.name}의 속박되어 움직이지 못했다.")
                 time.sleep(0.5)
-                effect.duration -= 1
             if effect.duration == 0:
                 self.status_effects.remove(effect)
                 print(f"{self.name}의 {effect.name} 낙인이 희미해진다.")
                 time.sleep(0.5)
                 return True
-
             if effect.damage_per_turn > 0:
                 print(f"{effect.name}이(가) {self.name}의 생명을 갉아먹는다.")
                 time.sleep(0.5)
                 self.take_damage(effect.damage_per_turn)
-            
             effect.duration -= 1
             if effect.duration < 0:
                 self.status_effects.remove(effect)
