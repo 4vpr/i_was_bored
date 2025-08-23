@@ -150,10 +150,9 @@ class Character:
         print(f"{self.name}이(가) {amount}만큼 생명을 되찾았다. (현재 생명: {self.current_health}/{self.max_health})")
 
     def deal_damage(self, target, base_damage, is_skill=False):
-        # Critical Hit Calculation
         critical_multiplier = 1.0
         if random.random() < self.critical / 100:
-            critical_multiplier = 2.0  # Critical damage multiplier
+            critical_multiplier = 2.0 # 치명타 배율
             print(f"{self.name}의 공격이 {target.name}에게 치명타로 적중했다!")
         
         final_damage = base_damage * critical_multiplier
@@ -182,11 +181,12 @@ class Character:
     def apply_turn_effects(self):
         skip_turn_active = False
         for effect in self.status_effects[:]:
+            print(f"{self.name}은(는) {effect.name}의 영향을 받고 있다. (남은 턴: {effect.duration})")
             if effect.skip_turn:
                 skip_turn_active = True
                 print(f"{self.name}은(는) {effect.name}의 속박되어 움직이지 못했다.")
                 effect.duration -= 1
-            if effect.duration <= 0:
+            if effect.duration == 0:
                 self.status_effects.remove(effect)
                 print(f"{self.name}의 {effect.name} 낙인이 희미해진다.")
                 return True
@@ -196,7 +196,7 @@ class Character:
                 self.take_damage(effect.damage_per_turn)
             
             effect.duration -= 1
-            if effect.duration <= 0:
+            if effect.duration < 0:
                 self.status_effects.remove(effect)
                 print(f"{self.name}의 {effect.name} 낙인이 사라졌다.")
                 self._apply_stat_modifiers()
@@ -781,9 +781,9 @@ class Game:
             input()
 
     def progress_stage(self):
-        print(f"\n--- 제 {self.stage} 장 ---\n")
+        print(f"\n--------- 제 {self.stage} 장 ---------\n")
         if self.stage == 1:
-            print("             깨어난 곳         ")
+            print("           깨어난 곳         ")
             print("-----------------------------"); time.sleep(1.5)
             print("어둠 속에서 길을 찾는다...\n"); time.sleep(1.5)
             print("동굴의 음습함은 너를 기분 좋게 만들었다.\n"); time.sleep(1.5)
