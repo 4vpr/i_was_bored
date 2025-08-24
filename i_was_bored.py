@@ -220,7 +220,7 @@ class Character:
             print("[ 장비 ]")
             for part, item in self.equipment.items():
                 print(f"{part}: {item.name if item else '없음'}")
-                print.sleep(0.5)
+                time.sleep(0.5)
             print("[ 힘 ]")
             if self.skills:
                 for skill in self.skills:
@@ -818,7 +818,15 @@ class Game:
     def get_skill(self, name):
         skill_template = self.all_skills_map.get(name)
         if skill_template:
-            return Skill(skill_template.name, skill_template.level, skill_template.max_level, skill_template.rarity, skill_template.initial_use_count, skill_template.effect, skill_template.is_monster_only)
+            return Skill(skill_template.name,
+                         skill_template.level,
+                         skill_template.max_level,
+                         skill_template.rarity,
+                         skill_template.initial_use_count,
+                         skill_template.effect,
+                         skill_template.is_monster_only,
+                         skill_template.power
+                         )
         return None
 
     def start(self):
