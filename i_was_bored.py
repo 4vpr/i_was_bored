@@ -47,7 +47,7 @@ class StatusEffect:
                  attack_modifier=0, defense_modifier=0, evasion_modifier=0, critical_modifier=0,
                  damage_taken_modifier=0, damage_dealt_modifier=0,
                  ignore_defense=False, ignore_evasion=False, skip_turn=False,
-                 invincible=False):
+                 invincible=False,before_action=False,for_next_turn=False):
         self.name = name
         self.duration = duration
         self.damage_per_turn = damage_per_turn
@@ -60,8 +60,9 @@ class StatusEffect:
         self.ignore_defense = ignore_defense
         self.ignore_evasion = ignore_evasion
         self.skip_turn = skip_turn
+        self.before_action = before_action
+        self.for_next_turn = for_next_turn
         self.invincible = invincible
-        
 
     def apply_effect(self, target):
         if self.damage_per_turn > 0:
@@ -157,15 +158,16 @@ class Character:
         actual_damage = max(1, round(damage / (1 + calculated_defense / 100)))
         actual_damage = round(actual_damage * damage_taken_multiplier)
         self.current_health -= actual_damage
-        print(f"{self.name}의 살점이 {actual_damage}만큼 찢겨나갔다. (남은 생명: {self.current_health}/{self.max_health})")
+        if self.current_health < 0:
+            self.current_health = 0
+        print(f"{self.name}의 살점이 {actual_damage}만큼 찢겨나갔다. (남은 생명: {int(self.current_health)}/{int(self.max_health)})")
         time.sleep(0.5)
         if not self.is_alive():
             print(f"{self.name}의 마지막 숨이 멎었다.")
             time.sleep(1)
-
     def heal(self, amount):
         self.current_health = min(self.max_health, self.current_health + amount)
-        print(f"{self.name}이(가) {amount}만큼 생명을 되찾았다. (현재 생명: {self.current_health}/{self.max_health})")
+        print(f"{self.name}이(가) {amount}만큼 생명을 되찾았다. (현재 생명: {int(self.current_health)}/{int(self.max_health)})")
         time.sleep(0.5)
 
     def deal_damage(self, target, base_damage, is_skill=False):
@@ -204,27 +206,32 @@ class Character:
 
 
     # 턴 효과 적용
+    def after_turn_effects(self):
+        for effect in self.status_effects[:]:
+            if effect.for_next_turn:
+                effect.for_next_turn = False
+            else:
+                effect.duration = effect.duration - 1
+                if effect.duration < 1:
+                    self.status_effects.remove(effect)
+                    print(f"{self.name}의 {effect.name} 낙인이 사라졌다.")
+                    time.sleep(0.5)
+                    self._apply_stat_modifiers()
+                else:
+                    print(f"{self.name}은(는) {effect.name}의 낙인을 보유한다. ({int(effect.duration)} 남음.)")
     def apply_turn_effects(self):
         is_actionable = True
         for effect in self.status_effects[:]:
-            time.sleep(0.5)
-            if effect.skip_turn:
-                is_actionable = False
-                print(f"{self.name}은(는) {effect.name}의 낙인으로 움직이지 못했다. ({effect.duration} 남음.)")
+            if effect.before_action:
                 time.sleep(0.5)
-            if effect.damage_per_turn > 0:
-                print(f"{effect.name}이(가) {self.name}의 낙인으로 생명을 갉아먹힌다. ({effect.duration} 남음.)")
-                time.sleep(0.5)
-                self.take_damage(effect.damage_per_turn)
-            else:
-                print(f"{self.name}은(는) {effect.name}의 낙인을 보유한다. ({effect.duration} 남음.)")
-            effect.duration = effect.duration - 1
-            print(effect.duration)
-            if effect.duration < 0:
-                self.status_effects.remove(effect)
-                print(f"{self.name}의 {effect.name} 낙인이 사라졌다.")
-                time.sleep(0.5)
-                self._apply_stat_modifiers()
+                if effect.skip_turn:
+                    is_actionable = False
+                    print(f"{self.name}은(는) {effect.name}의 낙인으로 움직이지 못했다. ({int(effect.duration)} 남음.)")
+                    time.sleep(0.5)
+                if effect.damage_per_turn > 0:
+                    print(f"{effect.name}이(가) {self.name}의 낙인으로 생명을 갉아먹힌다. ({int(effect.duration)} 남음.)")
+                    time.sleep(0.5)
+                    self.take_damage(effect.damage_per_turn)
         return is_actionable
     def show_stats(self):
         print(f"\n[ {self.name} ]"); time.sleep(0.1)
@@ -371,7 +378,6 @@ class Game:
             print(f"'{skill.name}' 발동... {caster.name}이(가) 생명을 흡수한다.")
             caster.heal(caster.max_health * 0.2 * skill.level)
             target.take_damage(caster.attack * skill.power)
-
         # 방어력 증가 level * power
         def iron_will(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 고통을 감내한다. (방어 + {skill.level * skill.power})")
@@ -411,7 +417,7 @@ class Game:
         # 약자 멸시 주는피해 받는피해 100% 증가 999턴 (상수)
         def scorn_the_weak(caster, target, skill):
             print(f"'{skill.name}' 발동... (주는피해,받는피해 2배)")
-            target.add_status_effect(StatusEffect("약자멸시", 999, damage_taken_modifier=1.0, damage_dealt_modifier=1.0))
+            target.add_status_effect(StatusEffect("약자멸시", 3, damage_taken_modifier=1.0, damage_dealt_modifier=1.0))
         # 효과 없음
         def taunt(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}을(를) 조롱한다...... (아무 효과 없음)")
@@ -423,11 +429,11 @@ class Game:
         # 적 받는 피해 20% 증가 3턴 (상수)
         def shatter_bone(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}의 뼈를 뒤틀어 놓는다. (받는피해 +30%)")
-            target.add_status_effect(StatusEffect("골절", 3, damage_taken_modifier=0.3))
+            target.add_status_effect(StatusEffect("골절", 3, damage_taken_modifier=0.3),for_next_turn = True)
         # 적 받는피해 증가
         def hex(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}에게 끔찍한 저주를 내린다. (받는 피해 +60%)")
-            target.add_status_effect(StatusEffect("저주", 2 + skill.level, damage_taken_modifier=0.6))
+            target.add_status_effect(StatusEffect("저주", 2 + skill.level, damage_taken_modifier=0.6),for_next_turn = True)
         # 회피율증가 10 * level 3턴
         def fade(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}의 모습이 흐려진다. (민첩 + {int(10*skill.level)})")
@@ -435,7 +441,7 @@ class Game:
         # 방어무시 2 + level 턴
         def break_armor(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}의 갑옷을 파괴한다. (방어 무시)")
-            target.add_status_effect(StatusEffect("노출", 2 + skill.level, ignore_defense=True))
+            target.add_status_effect(StatusEffect("노출", 2 + skill.level, ignore_defense=True),for_next_turn = True)
         # 적 부패 지속피해 (부패 최대체력 0 * 0.2)
         def blight(caster, target, skill):
             print(f"'{skill.name}' 발동... 부패의 구름이 {target.name}을(를) 감싼다. (생명 20% 지속피해)")
@@ -462,7 +468,7 @@ class Game:
         # 적 회피율 2턴 무시
         def ensnare(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}의 발을 옭아맨다. (민첩 무시)")
-            target.add_status_effect(StatusEffect("올가미", 2, ignore_evasion=True))
+            target.add_status_effect(StatusEffect("올가미", 2, ignore_evasion=True),for_next_turn = True)
         
         # 최대체력 * 0.15 * level * power 만큼 회복
         def heal(caster, target, skill):
@@ -507,7 +513,7 @@ class Game:
 
         def petrifying_gaze(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}이(가) 돌처럼 굳어간다.")
-            target.add_status_effect(StatusEffect("석화", 1, skip_turn=True, defense_modifier=50))
+            target.add_status_effect(StatusEffect("석화", 1, skip_turn=True, defense_modifier=100))
             
         def soul_drain_aura(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 주변의 영혼을 흡수한다.")
@@ -583,7 +589,7 @@ class Game:
             Skill("흐릿한 형상", 1, 1, 3, 5, fade, power=3),
             Skill("피의 폭풍", 1, 1, 3, 2, turn_damage, power=2.0),
             Skill("실명의 빛", 1, 1, 3, 2, stun, power=2),
-            Skill("초월의 그림자", 1, 1, 3, 1, shadow, power=3),
+            Skill("초월의 그림자", 1, 1, 3, 3, shadow, power=3),
 
         # 전설 등급 (4)
 
@@ -990,10 +996,12 @@ class Game:
             if not monster.is_alive(): break            
             if self.player.apply_turn_effects():
                 self.player_turn(monster)
+            self.player.after_turn_effects()
             if not monster.is_alive(): break
             if monster.apply_turn_effects():
                 self.monster_turn(monster)
             if not self.player.is_alive(): break
+            monster.after_turn_effects()
         if self.player.is_alive():
             print(f"\n{monster.name}의 시체를 넘고 전진한다.\n")
             time.sleep(1)
