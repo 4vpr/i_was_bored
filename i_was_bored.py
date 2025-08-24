@@ -228,21 +228,27 @@ class Character:
         return is_actionable
     def show_stats(self):
         print(f"\n[ {self.name} ]"); time.sleep(0.1)
-        print(f"생명: {self.current_health}/{self.max_health}"); time.sleep(0.1)
-        print(f"공격: {self.attack} 방어: {self.defense}"); time.sleep(0.1)
-        print(f"민첩: {self.evasion} 치명: {self.critical}"); time.sleep(0.1)
-        time.sleep(1)
+        print(f"생명: {int(self.current_health)}/{int(self.max_health)}"); time.sleep(0.1)
+        print(f"공격: {int(self.attack)} 방어: {int(self.defense)}"); time.sleep(0.1)
+        print(f"민첩: {int(self.evasion)} 치명: {int(self.critical)}"); time.sleep(0.1)
+        effect_to_display = ""
+        for effect in self.status_effects[:]:
+            effect_to_display += f"({effect.name}:{effect.duration}) "
+        if effect_to_display:
+            #print(f"상태이상: {effect_to_display}")
+            pass
+        time.sleep(0.5)
     def show_inv(self):
         if isinstance(self, Player):
             print("[ 장비 ]")
             for part, item in self.equipment.items():
                 print(f"{part}: {item.name if item else '없음'}")
-                time.sleep(0.5)
+                time.sleep(0.1)
             print("[ 힘 ]")
             if self.skills:
                 for skill in self.skills:
                     print(f"{skill.name} (Lv.{skill.level}, 남은 횟수: {skill.use_count})")
-                    time.sleep(0.5)
+                    time.sleep(0.1)
             else:
                 print("습득한 힘 없음")
 # --- 플레이어 클래스 ---
@@ -368,102 +374,107 @@ class Game:
 
         # 방어력 증가 level * power
         def iron_will(caster, target, skill):
-            print(f"'{skill.name}' 발동... {caster.name}이(가) 고통을 감내한다. [ 방어 + {skill.level * skill.power}]")
+            print(f"'{skill.name}' 발동... {caster.name}이(가) 고통을 감내한다. (방어 + {skill.level * skill.power})")
             caster.add_status_effect(StatusEffect("철의 의지", 3, defense_modifier=(skill.level * skill.power)))
         # 공격력 증가 level * power
         def war_cry(caster, target, skill):
-            print(f"'{skill.name}' 발동... {caster.name}의 함성이 울린다.[ 공격 + {skill.level * skill.power}]")
+            print(f"'{skill.name}' 발동... {caster.name}의 함성이 울린다.(공격 + {int(skill.level * skill.power)})")
             caster.add_status_effect(StatusEffect("전투의 함성", 2, attack_modifier=(skill.level * skill.power)))
         # 기절 skill.power 턴동안
         def stun(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}을(를) 무력화시킨다. [ 행동 불가 ]")
+            print(f"'{skill.name}' 발동... {target.name}을(를) 무력화시킨다. (행동 불가)")
             target.add_status_effect(StatusEffect("기절", int(skill.power), skip_turn=True))
         # 무적 power 턴동안
         def shadow(caster, target, skill):
-            print(f"'{skill.name}' 발동... {caster.name}이(가) 그림자가 된다. [ 무적 ]")
+            print(f"'{skill.name}' 발동... {caster.name}이(가) 그림자가 된다. (무적)")
             caster.add_status_effect(StatusEffect("그림자 형상", skill.power, invincible=True))
         # 방패로 강타 데미지 + 기절
         def shiled_attack(caster, target, skill):
-            print(f"'{skill.name}' 발동... {caster.name}이(가) 방패로 강타한다. [ 방어수치로 공격 ]")
+            print(f"'{skill.name}' 발동... {caster.name}이(가) 방패로 강타한다. (방어수치 공격)")
             target.take_damage(caster.defense * (1 + skill.level/3) * skill.power)
         # 공격력 50% 증가 3턴 (상수)
         def frenzy(caster, target, skill):
-            print(f"'{skill.name}' 발동... {caster.name}이(가) 광란에 휩싸인다. [ 공격 +50% ]")
+            print(f"'{skill.name}' 발동... {caster.name}이(가) 광란에 휩싸인다. (공격 +50%)")
             caster.add_status_effect(StatusEffect("광란", 3, attack_modifier=caster.attack * 0.5))
         # 공격력 증가 power 턴 동안 1.5 + level / 2
         def hate(caster, target, skill):
-            print(f"'{skill.name}' 발동... {caster.name}이(가) 증오를 집중한다. [ 공격 + {1.5 + skill.level / 2}]]")
-            caster.add_status_effect(StatusEffect("증오 집중", skill.power, damage_dealt_modifier=(1.5 + skill.level / 2)))
+            print(f"'{skill.name}' 발동... {caster.name}이(가) 증오를 집중한다. (공격 + {int((1 + skill.level / 2) * 100)}%)")
+            caster.add_status_effect(StatusEffect("증오 집중", skill.power, damage_dealt_modifier=(1 + skill.level / 2)))
         # 매 턴 데미지 attack * 0.5 * level * power
         def turn_damage(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}의 피를 말린다. [ 지속 피해 ]")
+            print(f"'{skill.name}' 발동... {target.name}의 피를 말린다. (지속 피해)")
             target.add_status_effect(StatusEffect("과다출혈", 3 + skill.level, damage_per_turn=caster.attack * skill.power))
         # 적 데미지 50% 약화
         def cripple(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}의 힘줄을 끊는다. [ 공격 -50%]")
+            print(f"'{skill.name}' 발동... {target.name}의 힘줄을 끊는다. (공격 -50%)")
             target.add_status_effect(StatusEffect("불구", 1 + skill.level, attack_modifier=-target.attack * 0.5))
         # 약자 멸시 주는피해 받는피해 100% 증가 999턴 (상수)
         def scorn_the_weak(caster, target, skill):
-            print(f"'{skill.name}' 발동... [ 주는피해 , 받는피해 100% 증가 ]")
+            print(f"'{skill.name}' 발동... (주는피해,받는피해 2배)")
             target.add_status_effect(StatusEffect("약자멸시", 999, damage_taken_modifier=1.0, damage_dealt_modifier=1.0))
         # 효과 없음
         def taunt(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}을(를) 조롱한다...... [ 효과 없음 ]")
+            print(f"'{skill.name}' 발동... {target.name}을(를) 조롱한다...... (아무 효과 없음)")
             pass
         # 적 데미지 20% 3턴 약화 (상수)
         def weaken(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}을(를) 약화시킨다. [ 공격 -30% ]")
+            print(f"'{skill.name}' 발동... {target.name}을(를) 약화시킨다. (공격 -30%)")
             target.add_status_effect(StatusEffect("약화", 3, attack_modifier=-target.attack * 0.3))
         # 적 받는 피해 20% 증가 3턴 (상수)
         def shatter_bone(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}의 뼈를 뒤틀어 놓는다. [ 받는피해 +30% ]")
+            print(f"'{skill.name}' 발동... {target.name}의 뼈를 뒤틀어 놓는다. (받는피해 +30%)")
             target.add_status_effect(StatusEffect("골절", 3, damage_taken_modifier=0.3))
         # 적 받는피해 증가
         def hex(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}에게 끔찍한 저주를 내린다. [ 받는 피해 +60% ]")
+            print(f"'{skill.name}' 발동... {target.name}에게 끔찍한 저주를 내린다. (받는 피해 +60%)")
             target.add_status_effect(StatusEffect("저주", 2 + skill.level, damage_taken_modifier=0.6))
         # 회피율증가 10 * level 3턴
         def fade(caster, target, skill):
-            print(f"'{skill.name}' 발동... {caster.name}의 모습이 흐려진다. [ 민첩 + {10*skill.level} ]")
+            print(f"'{skill.name}' 발동... {caster.name}의 모습이 흐려진다. (민첩 + {int(10*skill.level)})")
             caster.add_status_effect(StatusEffect("흐릿한 형상", 3, evasion_modifier=10 * skill.level))
         # 방어무시 2 + level 턴
         def break_armor(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}의 갑옷을 파괴한다. [ 방어 무시 ]")
+            print(f"'{skill.name}' 발동... {target.name}의 갑옷을 파괴한다. (방어 무시)")
             target.add_status_effect(StatusEffect("노출", 2 + skill.level, ignore_defense=True))
         # 적 부패 지속피해 (부패 최대체력 0 * 0.2)
         def blight(caster, target, skill):
-            print(f"'{skill.name}' 발동... 부패의 구름이 {target.name}을(를) 감싼다. [ 생명 20% 지속피해 ]")
+            print(f"'{skill.name}' 발동... 부패의 구름이 {target.name}을(를) 감싼다. (생명 20% 지속피해)")
             target.add_status_effect(StatusEffect("부패", skill.power, damage_per_turn=target.max_health * 0.2))
         # 적 힘봉인 2턴
         def silence(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}의 힘을 봉인한다. [ 힘 사용 불가 ]")
+            print(f"'{skill.name}' 발동... {target.name}의 힘을 봉인한다. (힘 사용 불가)")
             target.add_status_effect(StatusEffect("침묵", skill.power))
         # 공격력 30 * level, 방어력 -10 * level 3턴
         def reckless_abandon(caster, target, skill):
-            print(f"'{skill.name}' 발동... {caster.name}이(가) 모든 것을 내던진다. [ 공격 + {30 * skill.level} , 방어 - {10 * skill.level}")
+            print(f"'{skill.name}' 발동... {caster.name}이(가) 모든 것을 내던진다. (공격 + {int(30 * skill.level)} , 방어 - {int(10 * skill.level)})")
             caster.add_status_effect(StatusEffect("무모한 분노", 3, attack_modifier=30 * skill.level, defense_modifier=-10 * skill.level))
        
         # 회피율 40 증가 2턴
         def mirror_image(caster, target, skill):
-            print(f"'{skill.name}' 발동... {caster.name}의 환영이 나타난다. [ 민첩 + 50 ]")
+            print(f"'{skill.name}' 발동... {caster.name}의 환영이 나타난다. (민첩 + 50)")
             caster.add_status_effect(StatusEffect("거울 환영", 1 + skill.level, evasion_modifier=50))
         
         # 방어력 20 * level 2턴
         def bone_armor(caster, target, skill):
-            print(f"'{skill.name}' 발동... 뼈 갑옷이 {caster.name}을(를) 감싼다. [ 방어 + {20 * skill.level}]")
+            print(f"'{skill.name}' 발동... 뼈 갑옷이 {caster.name}을(를) 감싼다. (방어 + {int(20 * skill.level)})")
             caster.add_status_effect(StatusEffect("뼈 갑옷", 2, defense_modifier=20 * skill.level))
 
         # 적 회피율 2턴 무시
         def ensnare(caster, target, skill):
-            print(f"'{skill.name}' 발동... {target.name}의 발을 옭아맨다. [ 민첩 무시 ]")
+            print(f"'{skill.name}' 발동... {target.name}의 발을 옭아맨다. (민첩 무시)")
             target.add_status_effect(StatusEffect("올가미", 2, ignore_evasion=True))
         
         # 최대체력 * 0.15 * level * power 만큼 회복
         def heal(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 죽음의 경계에서 생명을 얻는다.")
             caster.heal(caster.max_health * 0.15 * skill.level * skill.power)
+
+        # 치명 증가
+        def sharpness(caster, target, skill):
+            print(f"'{skill.name}' 발동... {caster.name}이(가) 무기를 날카롭게 다듬는다. (치명 증가)")
+            caster.add_status_effect(StatusEffect("예리함", 2, critical_modifier=(20 + skill.level * 5)))
         
-        
+
         # 몬스터 전용 스킬
         def devour(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) {target.name}을(를) 집어삼킨다.")
@@ -516,8 +527,8 @@ class Game:
             Skill("기습", 1, 5, 1, 2, reaping, power=1.5),
             Skill("방패 밀어내기", 1, 5, 1, 10, shiled_attack, power=1.5),
             Skill("물어뜯기", 1, 2, 2, 3, life_steal, power=1.0),
-            Skill("의지", 1, 3, 1, 3, iron_will, power=5.0),
-            Skill("함성", 1, 3, 1, 3, war_cry, power=5.0),
+            Skill("의지", 1, 3, 1, 3, iron_will, power=10),
+            Skill("함성", 1, 3, 1, 3, war_cry, power=10),
             Skill("약화", 1, 3, 1, 10, weaken),
             Skill("뼈 갑옷", 1, 3, 1, 2, bone_armor),
             Skill("올가미", 1, 2, 1, 3, ensnare),
@@ -542,7 +553,8 @@ class Game:
             #적 피해 50% 약화
             Skill("상완골 분쇄", 1, 2, 2, 5, cripple),
             #효과
-            Skill("기절", 1, 2, 3, 5, stun, power=1),
+            Skill("예리함 연마", 1, 2, 2, 5, sharpness),
+            Skill("기절", 1, 2, 2, 5, stun, power=1),
             Skill("광기의 함성", 1, 2, 2, 5, war_cry, power=20),
             Skill("저주", 1, 1, 2, 5, hex, power=1.0),
             Skill("악의 기도", 1, 2, 2, 3, hex, power=1.0),
@@ -1048,7 +1060,7 @@ class Game:
         health_increase = 10 + (self.stage * 2)
         attack_increase = 3 + (self.stage // 2)
         defense_increase = 2 + (self.stage // 3)
-        crit_increase = 2 (self.stage // 3)
+        crit_increase = 2 + (self.stage // 3)
     
         choices_data = [
             ("육체 강화", "max_health", health_increase, "생명"),
@@ -1147,7 +1159,7 @@ class Game:
         time.sleep(1)
         for i, skill in enumerate(choices):
             current_level = next((s.level for s in self.player.skills if s.name == skill.name), 0)
-            print(f"{i+1}. {skill.name} (시전 가능 횟수: {skill.use_count}, 희귀도: {skill.rarity}, 레벨: {current_level}/{skill.max_level}")
+            print(f"{i+1}. {skill.name} (시전 가능 횟수: {skill.use_count}, 희귀도: {skill.rarity}, 레벨: {current_level}/{skill.max_level})")
             time.sleep(0.5)
             if getattr(skill, "desc", None):
                 print(f" - {skill.desc}")
@@ -1216,15 +1228,19 @@ class Game:
         self.player.show_stats()
         self.player.show_inv()
         time.sleep(1)
-        shop_inventory = []
+        self.shop_inventory = []
         self.available_items = []
-        get_available_items()
-        def get_available_items(self):
-            self.available_items = [item for item in self.all_equipment if item.stage <= self.stage and item not in self.player.Equipment]
+        def get_available_items():
+            equipped = {v for v in self.player.equipment.values() if v}
+            self.available_items = [
+                item for item in self.all_equipment
+                if item.stage <= self.stage and item not in equipped
+            ]
             self.shop_inventory = random.sample(self.available_items, min(5, len(self.available_items)))
+        get_available_items()
         while True:
             print(f"\n[피 묻은 금화: {self.player.gold}G]\n")
-            for i, item in enumerate(shop_inventory):
+            for i, item in enumerate(self.shop_inventory):
                 stats_display = []
                 if item.health != 0:
                     stats_display.append(f"생명: {item.health}")
@@ -1241,41 +1257,41 @@ class Game:
                 
                 print(f"{i+1}. {item.name} ({item.part}) - {item.price}G ({stats_str})")
                 time.sleep(0.5)
-            print(f"{len(shop_inventory)+1}. 새로고침 (10G)\n")
+            print(f"{len(self.shop_inventory)+1}. 새로고침 (10G)\n")
             time.sleep(0.5)
-            print(f"{len(shop_inventory)+2}. 떠난다\n")
+            print(f"{len(self.shop_inventory)+2}. 떠난다\n")
             time.sleep(0.5)
 
 
             while True:
                 try:
                     choice = int(input("선택의 시간이다. :"))
-                    if 1 <= choice <= len(shop_inventory) + 2:
+                    if 1 <= choice <= len(self.shop_inventory) + 2:
                         break
                     else:
                         print("어둠 속에서 길을 잃었는가? 다시 선택하라.")
                 except ValueError:
                     print("알 수 없는 속삭임이다. 명확한 답을 내놓아라.")
 
-            if choice == len(shop_inventory) + 2:
+            if choice == len(self.shop_inventory) + 2:
                 print("상점 주인이 어둠 속으로 사라진다.\n")
                 break
-            if choice == len(shop_inventory) + 1:
+            if choice == len(self.shop_inventory) + 1:
                 if self.player.gold >= 10:
                     self.player.gold -= 10
                     get_available_items()
-                    shop_inventory = self.shop_inventory
+                    self.shop_inventory = self.shop_inventory
                 else:
                     print("금화가 부족하다.")
             else:
-                chosen_item = shop_inventory[choice-1]
+                chosen_item = self.shop_inventory[choice-1]
                 if self.player.gold >= chosen_item.price:
                     if chosen_item.health < 0 and self.player.max_health < abs(chosen_item.health):
                         print("생명이 부족하여 장비를 받아들일 수 없다.")
                     else:
                         self.player.gold -= chosen_item.price
                         self.player.equip(chosen_item)
-                        shop_inventory.pop(choice-1)
+                        self.shop_inventory.pop(choice-1)
                 else:
                     print("금화가 부족하다.")
             time.sleep(1)
