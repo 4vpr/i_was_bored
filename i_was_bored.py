@@ -61,6 +61,7 @@ class StatusEffect:
         self.ignore_evasion = ignore_evasion
         self.skip_turn = skip_turn
         self.invincible = invincible
+        
 
     def apply_effect(self, target):
         if self.damage_per_turn > 0:
@@ -68,7 +69,7 @@ class StatusEffect:
 
 # --- 스킬 클래스 ---
 class Skill:
-    def __init__(self, name, level, max_level, rarity, use_count, effect, is_monster_only=False,power=1.0):
+    def __init__(self, name, level, max_level, rarity, use_count, effect, is_monster_only=False,power=1.0, desc=None):
         self.name = name
         self.level = level
         self.max_level = max_level
@@ -78,6 +79,7 @@ class Skill:
         self.effect = effect
         self.is_monster_only = is_monster_only
         self.power = power
+        self.desc = desc
 
     def execute(self, caster, target):
         self.use_count -= 1
@@ -508,26 +510,18 @@ class Game:
            
         # 일반 등급 (1)
 
-            #공격
             Skill("찌르기", 1, 2, 1, 10, damage, power=1.0),
             Skill("꿰뚫기", 1, 5, 1, 15, damage, power=0.9),
             Skill("걷어차기", 1, 3, 1, 10, fixed_damage, power=20.0),
             Skill("기습", 1, 5, 1, 2, reaping, power=1.5),
             Skill("방패 밀어내기", 1, 5, 1, 10, shiled_attack, power=1.5),
-
-            #피흡
             Skill("물어뜯기", 1, 2, 2, 3, life_steal, power=1.0),
-
-            #스탯강화
             Skill("의지", 1, 3, 1, 3, iron_will, power=5.0),
             Skill("함성", 1, 3, 1, 3, war_cry, power=5.0),
-
-            #효과
             Skill("약화", 1, 3, 1, 10, weaken),
             Skill("뼈 갑옷", 1, 3, 1, 2, bone_armor),
             Skill("올가미", 1, 2, 1, 3, ensnare),
             Skill("응급 처치", 1, 3, 1, 1, heal, power=1.0),
-            # 기타
             Skill("조롱", 1, 3, 1, 2, taunt, power=1.0),
 
         # 레어 등급 (2)
@@ -1153,8 +1147,12 @@ class Game:
         time.sleep(1)
         for i, skill in enumerate(choices):
             current_level = next((s.level for s in self.player.skills if s.name == skill.name), 0)
-            print(f"{i+1}. {skill.name} (시전 가능 횟수: {skill.use_count}, 희귀도: {skill.rarity}, 레벨: {current_level}/{skill.max_level}\n")
+            print(f"{i+1}. {skill.name} (시전 가능 횟수: {skill.use_count}, 희귀도: {skill.rarity}, 레벨: {current_level}/{skill.max_level}")
             time.sleep(0.5)
+            if getattr(skill, "desc", None):
+                print(f" - {skill.desc}")
+                time.sleep(0.5)
+            print("")
         print(f"{len(choices)+1}. 이 힘을 거부한다.\n")
 
         while True:
