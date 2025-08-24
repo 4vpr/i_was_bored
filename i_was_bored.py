@@ -47,7 +47,7 @@ class StatusEffect:
                  attack_modifier=0, defense_modifier=0, evasion_modifier=0, critical_modifier=0,
                  damage_taken_modifier=0, damage_dealt_modifier=0,
                  ignore_defense=False, ignore_evasion=False, skip_turn=False,
-                 invincible=False,before_action=False,for_next_turn=False):
+                 invincible=False):
         self.name = name
         self.duration = duration
         self.damage_per_turn = damage_per_turn
@@ -60,8 +60,6 @@ class StatusEffect:
         self.ignore_defense = ignore_defense
         self.ignore_evasion = ignore_evasion
         self.skip_turn = skip_turn
-        self.before_action = before_action
-        self.for_next_turn = for_next_turn
         self.invincible = invincible
 
     def apply_effect(self, target):
@@ -173,6 +171,7 @@ class Character:
     def deal_damage(self, target, base_damage, is_skill=False):
         crit_mul = 1.0
         if random.random() < self.critical / 100:
+
             crit_mul = 1.5
             if self.critical > 100:
                 crit_mul += self.critical / 100 - 1
@@ -208,30 +207,28 @@ class Character:
     # 턴 효과 적용
     def after_turn_effects(self):
         for effect in self.status_effects[:]:
-            if effect.for_next_turn:
-                effect.for_next_turn = False
+            effect.duration -= 1
+            if effect.duration < 1:
+                self.status_effects.remove(effect)
+                print(f"{self.name}의 {effect.name} 낙인이 사라졌다.")
+                time.sleep(0.5)
+                self._apply_stat_modifiers()
             else:
-                effect.duration = effect.duration - 1
-                if effect.duration < 1:
-                    self.status_effects.remove(effect)
-                    print(f"{self.name}의 {effect.name} 낙인이 사라졌다.")
-                    time.sleep(0.5)
-                    self._apply_stat_modifiers()
-                else:
-                    print(f"{self.name}은(는) {effect.name}의 낙인을 보유한다. ({int(effect.duration)} 남음.)")
+                pass
     def apply_turn_effects(self):
         is_actionable = True
         for effect in self.status_effects[:]:
-            if effect.before_action:
+            time.sleep(0.5)
+            if effect.skip_turn:
+                is_actionable = False
+                print(f"{self.name}은(는) {effect.name}의 낙인으로 움직이지 못했다. ({int(effect.duration)} 남음.)")
                 time.sleep(0.5)
-                if effect.skip_turn:
-                    is_actionable = False
-                    print(f"{self.name}은(는) {effect.name}의 낙인으로 움직이지 못했다. ({int(effect.duration)} 남음.)")
-                    time.sleep(0.5)
-                if effect.damage_per_turn > 0:
-                    print(f"{effect.name}이(가) {self.name}의 낙인으로 생명을 갉아먹힌다. ({int(effect.duration)} 남음.)")
-                    time.sleep(0.5)
-                    self.take_damage(effect.damage_per_turn)
+            if effect.damage_per_turn > 0:
+                print(f"{effect.name}이(가) {self.name}의 낙인으로 생명을 갉아먹힌다. ({int(effect.duration)} 남음.)")
+                time.sleep(0.5)
+                self.take_damage(effect.damage_per_turn)
+            else:
+                print(f"{self.name}은(는) {effect.name}의 낙인을 보유한다. ({int(effect.duration)} 남음.)")
         return is_actionable
     def show_stats(self):
         print(f"\n[ {self.name} ]"); time.sleep(0.1)
@@ -324,7 +321,6 @@ class Game:
         self._initialize_monsters()
 # 스킬 구현부
     def _initialize_skills(self):
-
         # 기본 데미지 스킬
         def damage(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}의 살점을 도려낸다.")
@@ -365,8 +361,6 @@ class Game:
             time.sleep(0.5)
             caster.add_status_effect(StatusEffect("급소 포착", 0, critical_modifier=50))
             caster.deal_damage(target, caster.attack * (1 + skill.level / 3) * skill.power, is_skill=True)
-    
-
         # 두번 공격
         def flurry(caster, target, skill):
             print(f"'{skill.name}' 발동... 핏빛 칼날이 춤춘다.")
@@ -381,11 +375,11 @@ class Game:
         # 방어력 증가 level * power
         def iron_will(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 고통을 감내한다. (방어 + {skill.level * skill.power})")
-            caster.add_status_effect(StatusEffect("철의 의지", 3, defense_modifier=(skill.level * skill.power)))
+            caster.add_status_effect(StatusEffect("철의 의지", 5, defense_modifier=(skill.level * skill.power)))
         # 공격력 증가 level * power
         def war_cry(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}의 함성이 울린다.(공격 + {int(skill.level * skill.power)})")
-            caster.add_status_effect(StatusEffect("전투의 함성", 2, attack_modifier=(skill.level * skill.power)))
+            caster.add_status_effect(StatusEffect("전투의 함성", 5, attack_modifier=(skill.level * skill.power)))
         # 기절 skill.power 턴동안
         def stun(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}을(를) 무력화시킨다. (행동 불가)")
@@ -429,11 +423,11 @@ class Game:
         # 적 받는 피해 20% 증가 3턴 (상수)
         def shatter_bone(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}의 뼈를 뒤틀어 놓는다. (받는피해 +30%)")
-            target.add_status_effect(StatusEffect("골절", 3, damage_taken_modifier=0.3),for_next_turn = True)
+            target.add_status_effect(StatusEffect("골절", 5, damage_taken_modifier=0.3))
         # 적 받는피해 증가
         def hex(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}에게 끔찍한 저주를 내린다. (받는 피해 +60%)")
-            target.add_status_effect(StatusEffect("저주", 2 + skill.level, damage_taken_modifier=0.6),for_next_turn = True)
+            target.add_status_effect(StatusEffect("저주", 3 + skill.level, damage_taken_modifier=0.6))
         # 회피율증가 10 * level 3턴
         def fade(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}의 모습이 흐려진다. (민첩 + {int(10*skill.level)})")
@@ -441,7 +435,7 @@ class Game:
         # 방어무시 2 + level 턴
         def break_armor(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}의 갑옷을 파괴한다. (방어 무시)")
-            target.add_status_effect(StatusEffect("노출", 2 + skill.level, ignore_defense=True),for_next_turn = True)
+            target.add_status_effect(StatusEffect("노출", 3 + skill.level, ignore_defense=True, defense_modifier=-100))
         # 적 부패 지속피해 (부패 최대체력 0 * 0.2)
         def blight(caster, target, skill):
             print(f"'{skill.name}' 발동... 부패의 구름이 {target.name}을(를) 감싼다. (생명 20% 지속피해)")
@@ -453,22 +447,22 @@ class Game:
         # 공격력 30 * level, 방어력 -10 * level 3턴
         def reckless_abandon(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 모든 것을 내던진다. (공격 + {int(30 * skill.level)} , 방어 - {int(10 * skill.level)})")
-            caster.add_status_effect(StatusEffect("무모한 분노", 3, attack_modifier=30 * skill.level, defense_modifier=-10 * skill.level))
+            caster.add_status_effect(StatusEffect("무모한 분노", 5, attack_modifier=30 * skill.level, defense_modifier=-10 * skill.level))
        
-        # 회피율 40 증가 2턴
+        # 회피율 50 증가 2턴
         def mirror_image(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}의 환영이 나타난다. (민첩 + 50)")
-            caster.add_status_effect(StatusEffect("거울 환영", 1 + skill.level, evasion_modifier=50))
+            caster.add_status_effect(StatusEffect("거울 환영", 2 + skill.level, evasion_modifier=50))
         
         # 방어력 20 * level 2턴
         def bone_armor(caster, target, skill):
             print(f"'{skill.name}' 발동... 뼈 갑옷이 {caster.name}을(를) 감싼다. (방어 + {int(20 * skill.level)})")
             caster.add_status_effect(StatusEffect("뼈 갑옷", 2, defense_modifier=20 * skill.level))
 
-        # 적 회피율 2턴 무시
+        # 적 회피율 3턴 무시
         def ensnare(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}의 발을 옭아맨다. (민첩 무시)")
-            target.add_status_effect(StatusEffect("올가미", 2, ignore_evasion=True),for_next_turn = True)
+            target.add_status_effect(StatusEffect("올가미", 3, ignore_evasion=True))
         
         # 최대체력 * 0.15 * level * power 만큼 회복
         def heal(caster, target, skill):
@@ -478,7 +472,7 @@ class Game:
         # 치명 증가
         def sharpness(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 무기를 날카롭게 다듬는다. (치명 증가)")
-            caster.add_status_effect(StatusEffect("예리함", 2, critical_modifier=(20 + skill.level * 5)))
+            caster.add_status_effect(StatusEffect("예리함", 5, critical_modifier=(20 + skill.level * 5)))
         
 
         # 몬스터 전용 스킬
@@ -505,7 +499,8 @@ class Game:
         def whirlpool(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 소용돌이를 일으킨다.")
             target.take_damage(caster.attack * 1.2)
-            target.add_status_effect(StatusEffect("속박", 2, evasion_modifier=-20))
+            target.add_status_effect(StatusEffect("바람", 3, evasion_modifier=-20))
+            caster.add_status_effect(StatusEffect("소용돌이", 3, evasion_modifier=20))
 
         def pestilence(caster, target, skill):
             print(f"'{skill.name}' 발동... 역병이 퍼진다.")
@@ -513,7 +508,7 @@ class Game:
 
         def petrifying_gaze(caster, target, skill):
             print(f"'{skill.name}' 발동... {target.name}이(가) 돌처럼 굳어간다.")
-            target.add_status_effect(StatusEffect("석화", 1, skip_turn=True, defense_modifier=100))
+            target.add_status_effect(StatusEffect("석화", 1, skip_turn=True, defense_modifier=50))
             
         def soul_drain_aura(caster, target, skill):
             print(f"'{skill.name}' 발동... {caster.name}이(가) 주변의 영혼을 흡수한다.")
