@@ -20,6 +20,6 @@ todo) 스킬 밸런스 조정, 툴팁 제공, pygame 라이브러리 사?용 할
 빌드를 짜면 재밋습니다  
 예)
 방어도 빌드: 방패 + 방패밀어내기  
-치명타 빌드: 일본도 + 예리함 연마 + 약점 찔러넣기  
+치명타 빌드: 일본도 + 예리함 연마 + 예리한 일격
 
 [다운로드](https://github.com/4vpr/i_was_bored/releases/download/0.0.2a/i_was_bored.py)  
