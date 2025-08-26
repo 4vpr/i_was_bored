@@ -292,7 +292,7 @@ class Player(Character):
                 self.current_health = self.max_health
             self.equipment[part] = None
             self.gold += int(item.price * 0.7)
-            print(f"{item.name}을(를) {int(item.price * 0.7)} 에 팔았다.")
+            print(f"{item.name}을(를) {int(item.price * 0.7)}G 에 팔았다.")
 
 # --- 몬스터 클래스 ---
 class Monster(Character):
@@ -535,6 +535,7 @@ class Game:
             Skill("올가미", 1, 2, 1, 3, ensnare),
             Skill("응급 처치", 1, 3, 1, 1, heal, power=1.0),
             Skill("조롱", 1, 3, 1, 2, taunt, power=1.0),
+            Skill("기절", 1, 1, 1, 5, stun, power=1),
 
         # 레어 등급 (2)
             
@@ -546,16 +547,10 @@ class Game:
             Skill("저돌적 돌진", 1, 2, 2, 2, advance_damage, power=1.5),
             Skill("칼날의 춤", 1, 3, 2, 3, flurry, power=0.9),
             Skill("이중 공격", 1, 3, 2, 4, flurry, power=1.0),
-            #피흡
             Skill("흡혈", 1, 3, 2, 3, life_steal, power=1.3),
-            #지속피해
             Skill("과다출혈", 1, 3, 2, 5, turn_damage, power=1.2),
-    
-            #적 피해 50% 약화
             Skill("상완골 분쇄", 1, 2, 2, 5, cripple),
-            #효과
             Skill("예리함 연마", 1, 2, 2, 5, sharpness),
-            Skill("기절", 1, 2, 2, 5, stun, power=1),
             Skill("광기의 함성", 1, 2, 2, 5, war_cry, power=20),
             Skill("저주", 1, 1, 2, 5, hex, power=1.0),
             Skill("악의 기도", 1, 2, 2, 3, hex, power=1.0),
@@ -563,27 +558,24 @@ class Game:
             Skill("무모한 분노", 1, 2, 2, 2, reckless_abandon),
             Skill("거울 환영", 1, 3, 2, 5, mirror_image),
             Skill("갑옷 부수기", 1, 3, 2, 3, break_armor),
-            Skill("증오", 1, 3, 2, 3, hate, power=2),
-            Skill("후두부 강타", 1, 2, 1, 10, stun, power=1),
+            Skill("증오", 1, 3, 2, 5, hate, power=2),
+            Skill("후두부 강타", 1, 1, 1, 5, stun, power=2),
 
         # 영웅 등급 (3)
 
             Skill("처단", 1, 2, 3, 3, execute, power=2.0),
             Skill("영혼 기절", 1, 1, 3, 5, stun, power=2),
             Skill("그림자 형상", 1, 1, 3, 4, shadow, power=2),
-
             Skill("약자멸시", 1, 1, 3, 10, scorn_the_weak),
             Skill("영혼 갈취", 1, 1, 3, 5, life_steal, power=2.5),
+            Skill("생명 갈취", 1, 1, 2, 5, life_steal, power=2.1),
             Skill("전장의 포효", 1, 1, 3, 10, war_cry, power=30),
             Skill("최후의 방어", 1, 1, 3, 2, iron_will, power=50.0),
-
-            Skill("생명 갈취", 1, 1, 2, 5, life_steal, power=2.1),
-
-            Skill("정화", 1, 1, 3, 1, lambda c, t, s: c.status_effects.clear(), power=1.0),
+            #Skill("정화", 1, 1, 1, 10, lambda c, t, s: c.status_effects.clear(), power=1.0),
             Skill("어둠의 가호", 1, 1, 3, 1, bone_armor, power=40),
             Skill("흐릿한 형상", 1, 1, 3, 5, fade, power=3),
             Skill("피의 폭풍", 1, 1, 3, 2, turn_damage, power=2.0),
-            Skill("실명의 빛", 1, 1, 3, 2, stun, power=2),
+            Skill("실명의 빛", 1, 1, 3, 5, stun, power=3),
             Skill("초월의 그림자", 1, 1, 3, 3, shadow, power=3),
 
         # 전설 등급 (4)
