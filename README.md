@@ -7,6 +7,4 @@
 게임이 매우 불친절합니다.  
 다중 트라이를 요구 할 수 있습니다.
 
-todo) 스킬 밸런스 조정, 툴팁 제공, pygame 라이브러리 사?용 할?까 말?까, 재밌는 효과를 가진 장신구 제작
-
 [다운로드](https://github.com/4vpr/i_was_bored/releases/download/0.0.2a/i_was_bored.py)  
